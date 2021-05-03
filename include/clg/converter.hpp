@@ -4,44 +4,99 @@
 
 #pragma once
 
-extern "C" {
-    #include <lua.h>
-    #include <lauxlib.h>
-    #include <lualib.h>
-}
-#include <cstring>
+#include "lua.hpp"
+#include "exception.hpp"
 
 namespace clg {
-
-    class lua_exception: public std::runtime_error {
-    public:
-        using std::runtime_error::runtime_error;
-    };
 
 
     template<typename T>
     struct converter {
         static T from_lua(lua_State* l, int n) {
-            static_assert(0, "unimplemented!");
+            throw clg_exception("unimplemented converter");
+        }
+        static int to_lua(lua_State* l, const T&) {
+            throw clg_exception("unimplemented converter");
         }
     };
 
     template<>
     struct converter<int> {
         static int from_lua(lua_State* l, int n) {
-            if (lua_isinteger(l, n)) {
-                throw lua_exception("not an integer");
+            if (!lua_isinteger(l, n)) {
+                throw clg_exception("not an integer");
             }
             return lua_tointeger(l, n);
         }
+        static int to_lua(lua_State* l, int v) {
+            lua_pushinteger(l, v);
+            return 1;
+        }
+    };
+
+    template<>
+    struct converter<float> {
+        static float from_lua(lua_State* l, int n) {
+            if (!lua_isnumber(l, n)) {
+                throw clg_exception("not a float");
+            }
+            return lua_tonumber(l, n);
+        }
+        static int to_lua(lua_State* l, float v) {
+            lua_pushnumber(l, v);
+            return 1;
+        }
     };
     template<>
-    struct converter<int> {
-        static int from_lua(lua_State* l, int n) {
-            if (lua_isinteger(l, n)) {
-                throw lua_exception("not an integer");
+    struct converter<double> {
+        static double from_lua(lua_State* l, int n) {
+            if (!lua_isnumber(l, n)) {
+                throw clg_exception("not a double");
             }
-            return lua_tointeger(l, n);
+            return lua_tonumber(l, n);
+        }
+        static int to_lua(lua_State* l, double v) {
+            lua_pushnumber(l, v);
+            return 1;
+        }
+    };
+    template<>
+    struct converter<std::string> {
+        static std::string from_lua(lua_State* l, int n) {
+            if (!lua_isstring(l, n)) {
+                throw clg_exception("not a string");
+            }
+            return lua_tostring(l, n);
+        }
+        static int to_lua(lua_State* l, const std::string& v) {
+            lua_pushstring(l, v.c_str());
+            return 1;
+        }
+    };
+    template<>
+    struct converter<bool> {
+        static bool from_lua(lua_State* l, int n) {
+            if (!lua_isboolean(l, n)) {
+                throw clg_exception("not a boolean");
+            }
+            return lua_toboolean(l, n);
+        }
+        static int to_lua(lua_State* l, bool v) {
+            lua_pushboolean(l, v);
+            return 1;
+        }
+    };
+    template<typename T>
+    struct converter<T*> {
+        static T* from_lua(lua_State* l, int n) {
+            if (!lua_islightuserdata(l, n)) {
+                throw clg_exception("not a userdata");
+            }
+            return reinterpret_cast<T*>(lua_touserdata(l, n));
+        }
+        static int to_lua(lua_State* l, T* v) {
+            lua_pushlightuserdata(l, v);
+            return 1;
         }
     };
 
@@ -51,44 +106,33 @@ namespace clg {
         lua_pop(l, 1);
         return t;
     }
+    template<typename T>
+    static int push_to_lua(lua_State* l, const T& value) {
+        return converter<T>::to_lua(l, value);
+    }
 
+    template<typename... Args>
+    struct converter<std::tuple<Args...>> {
+        static int to_lua(lua_State* l, const std::tuple<Args...>& v) {
+            converter<std::tuple<Args...>> t(l);
+            std::apply([&](Args... a) {
+                t.push(std::forward<Args>(a)...);
+            }, v);
+            return sizeof...(Args);
+        }
 
-    /**
-     * Базовый интерфейс для работы с Lua. Не инициализирует Lua самостоятельно.
-     */
-    class interface {
     private:
         lua_State* mState;
 
-    public:
-        explicit interface(lua_State* state) : mState(state) {}
+        converter(lua_State* state) : mState(state) {}
 
-        void register_function(const std::string& name, int(* function)(lua_State* s)) {
-            lua_register(mState, name.c_str(), function);
-        }
+        template<typename Arg, typename... MyArgs>
+        void push(Arg&& arg, MyArgs&&... args) {
+            push_to_lua(mState, arg);
 
-        template<typename ReturnType>
-        int do_string(const std::string& exec) {
-            luaL_dostring(mState, exec.c_str());
-            return get_from_lua<ReturnType>(mState);
+            push(std::forward<MyArgs>(args)...);
         }
 
-        operator lua_State*() const {
-            return mState;
-        }
-    };
-
-    /**
-     * В отличии от interface, этот класс сам создаёт виртуальную машину Lua, загружает базовые библиотеки и отвечает за
-     * её освобождение.
-     */
-    class vm: public interface {
-    public:
-        vm(): interface(luaL_newstate()) {
-            luaL_openlibs(*this);
-        }
-        ~vm() {
-            lua_close(*this);
-        }
+        void push() {}
     };
 }

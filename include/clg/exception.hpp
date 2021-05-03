@@ -2,7 +2,22 @@
 // Created by alex2 on 02.05.2021.
 //
 
-#ifndef CPP_LUA_GLUE_EXCEPTION_HPP
-#define CPP_LUA_GLUE_EXCEPTION_HPP
+#pragma once
 
-#endif //CPP_LUA_GLUE_EXCEPTION_HPP
+#include <stdexcept>
+
+namespace clg {
+
+    class clg_exception : public std::runtime_error {
+    public:
+        using std::runtime_error::runtime_error;
+    };
+    class syntax_error: public clg_exception {
+    public:
+        using clg_exception::clg_exception;
+    };
+    class lua_exception: public clg_exception {
+    public:
+        using clg_exception::clg_exception;
+    };
+}

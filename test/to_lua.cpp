@@ -2,29 +2,30 @@
 #include <boost/test/unit_test.hpp>
 #include <clg/clg.hpp>
 
-BOOST_AUTO_TEST_SUITE(from_lua)
+BOOST_AUTO_TEST_SUITE(to_lua)
 
-BOOST_AUTO_TEST_CASE(return_integer) {
+BOOST_AUTO_TEST_CASE(to_integer) {
     clg::vm v;
-    auto x = v.do_string<int>("return 4 + 2");
-    BOOST_CHECK_EQUAL(x, 6);
+    clg::push_to_lua(v, 228);
+    BOOST_CHECK_EQUAL(clg::get_from_lua<int>(v), 228);
 }
-BOOST_AUTO_TEST_CASE(return_float) {
+BOOST_AUTO_TEST_CASE(to_float) {
     clg::vm v;
-    auto x = v.do_string<float>("return 4.2 + 7.5");
-    BOOST_TEST((x >= 11.6 && x <= 12));
+    clg::push_to_lua(v, 11.7f);
+    auto x = clg::get_from_lua<float>(v);
+    BOOST_CHECK_CLOSE(x, 11.7f, 0.01f);
 }
-BOOST_AUTO_TEST_CASE(return_string) {
+BOOST_AUTO_TEST_CASE(to_string) {
     clg::vm v;
-    auto x = v.do_string<std::string>("return \"govno\"");
-    BOOST_CHECK_EQUAL(x, "govno");
+    clg::push_to_lua(v, std::string("zhopa"));
+    BOOST_CHECK_EQUAL(clg::get_from_lua<std::string>(v), "zhopa");
 }
-BOOST_AUTO_TEST_CASE(return_bool) {
+BOOST_AUTO_TEST_CASE(to_bool) {
     clg::vm v;
-    auto x = v.do_string<bool>("return true");
-    BOOST_TEST(x);
-    x = v.do_string<bool>("return false");
-    BOOST_TEST(!x);
+    clg::push_to_lua(v, true);
+    BOOST_CHECK_EQUAL(clg::get_from_lua<bool>(v), true);
+    clg::push_to_lua(v, false);
+    BOOST_CHECK_EQUAL(clg::get_from_lua<bool>(v), false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
