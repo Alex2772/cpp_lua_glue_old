@@ -71,6 +71,15 @@ namespace clg {
                 return get_from_lua<ReturnType>(mState);
             }
         }
+        template<typename ReturnType>
+        ReturnType do_file(const std::string& exec) {
+            if (luaL_dofile(mState, exec.c_str()) != 0) {
+                throw_syntax_error();
+            }
+            if constexpr (!std::is_same_v<void, ReturnType>) {
+                return get_from_lua<ReturnType>(mState);
+            }
+        }
 
         operator lua_State*() const {
             return mState;
