@@ -15,7 +15,7 @@ namespace clg {
     /**
      * Базовый интерфейс для работы с Lua. Не инициализирует Lua самостоятельно.
      */
-    class interface {
+    class state_interface {
     private:
         lua_State* mState;
 
@@ -53,7 +53,7 @@ namespace clg {
         }
 
     public:
-        explicit interface(lua_State* state) : mState(state) {}
+        explicit state_interface(lua_State* state) : mState(state) {}
 
         template<auto f>
         void register_function(const std::string& name) {
@@ -86,11 +86,11 @@ namespace clg {
         }
 
         class function_call {
-            friend class interface;
+            friend class state_interface;
         private:
-            interface& mClg;
+            state_interface& mClg;
             const std::string& mName;
-            function_call(const std::string& name, interface& clg) : mName(name), mClg(clg) {}
+            function_call(const std::string& name, state_interface& clg) : mName(name), mClg(clg) {}
 
 
             template<typename Arg, typename... Args>
@@ -144,9 +144,9 @@ namespace clg {
      * В отличии от interface, этот класс сам создаёт виртуальную машину Lua, загружает базовые библиотеки и отвечает за
      * её освобождение.
      */
-    class vm: public interface {
+    class vm: public state_interface {
     public:
-        vm(): interface(luaL_newstate()) {
+        vm(): state_interface(luaL_newstate()) {
             luaL_openlibs(*this);
         }
         ~vm() {
