@@ -82,15 +82,6 @@ BOOST_AUTO_TEST_CASE(call_multiple_functions) {
     BOOST_CHECK_EQUAL(result, "hello world, loshara!");
 }
 
-/*
- *
- * Если в GetChaAttr передать 3 аргумента, то функция возвращает два результата
- * local result1, result2 = GetChaAttr(role, x1, x2)
- *
- * Если в GetChaAttr передать 2 аргумента, то функция возвращает один результат
- * local result1 = GetChaAttr(role, x1)
- *
- */
 
 std::tuple<int, int> func_return_1_2() {
     return { 1, 2 };
@@ -105,57 +96,45 @@ BOOST_AUTO_TEST_CASE(call_return_multiple) {
             );
 
 
-    // BickerNotice(role , "Фея уже имеет такой навык. Использование невозможно. " )
-
     BOOST_CHECK_EQUAL(result, "12");
 }
 
-
-/*
- * lua_pushlightuserdata
-inline int lua_BickerNotice(lua_State* L)
-{
-	BOOL bValid = (lua_gettop(L) == 2 && lua_islightuserdata(L, 1) && lua_isstring(L, 2));
-	if (!bValid)
-	{
-		E_LUAPARAM;
-		return 0;
-	}
-
-	CCharacter* pChar = (CCharacter*)lua_touserdata(L, 1);
-	const char* pszData = lua_tostring(L, 2);
-	if (!pChar || !pszData)
-	{
-		E_LUANULL;
-		return 0;
-	}
-
-	pChar->BickerNotice(pszData);
-	return 0;
+void func_call_many_args1(int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8) {
+    BOOST_CHECK_EQUAL(v1, 1);
+    BOOST_CHECK_EQUAL(v2, 2);
+    BOOST_CHECK_EQUAL(v3, 3);
+    BOOST_CHECK_EQUAL(v4, 4);
+    BOOST_CHECK_EQUAL(v5, 5);
+    BOOST_CHECK_EQUAL(v6, 6);
+    BOOST_CHECK_EQUAL(v7, 7);
+    BOOST_CHECK_EQUAL(v8, 8);
 }
 
- *
- *
- *
-void CCharacter::BickerNotice(const char szData[], ...)
-{
-	// Modify by lark.li 20080801 begin
-	char szTemp[250];
-	memset(szTemp, 0, sizeof(szTemp));
-	va_list list;
-	va_start(list, szData);
-	_vsnprintf(szTemp, sizeof(szTemp) - 1, szData, list);
-	//vsprintf( szTemp, szData, list );
-	// End
-	va_end(list);
-
-	WPACKET packet = GETWPACKET();
-	WRITE_CMD(packet, CMD_MC_BICKER_NOTICE);
-	WRITE_STRING(packet, szTemp);
-
-	this->ReflectINFof(this, packet);
+BOOST_AUTO_TEST_CASE(call_many_args1) {
+    clg::vm v;
+    v.register_function<func_call_many_args1>("call");
+    v.do_string<void>("call(1,2,3,4,5,6,7,8)");
 }
- *
- */
+
+
+void func_call_many_args2(int v1, int v2, const char* v3, int v4, int v5, int v6, int v7, int v8) {
+    BOOST_CHECK_EQUAL(v1, 60);
+    BOOST_CHECK_EQUAL(v2, 6);
+    BOOST_CHECK_EQUAL(std::string(v3), "texture/ui/life.png");
+    BOOST_CHECK_EQUAL(v4, 60);
+    BOOST_CHECK_EQUAL(v5, 5);
+    BOOST_CHECK_EQUAL(v6, 0);
+    BOOST_CHECK_EQUAL(v7, 0);
+    BOOST_CHECK_EQUAL(v8, 1);
+}
+
+BOOST_AUTO_TEST_CASE(call_many_args2) {
+    clg::vm v;
+    v.register_function<func_call_many_args2>("call");
+    //v.do_string<void>("TRUE = 1\ncall(1,2,'loh',4,5,6,7,8,TRUE)");
+
+    v.do_string<void>("call( 60          ,6,     \"texture/ui/life.png\", 60, 5       , 0, 0, true )");
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()

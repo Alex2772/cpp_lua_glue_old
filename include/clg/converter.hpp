@@ -24,6 +24,9 @@ namespace clg {
     struct converter<int> {
         static int from_lua(lua_State* l, int n) {
             if (!lua_isinteger(l, n)) {
+                if (lua_isboolean(l, n)) {
+                    return lua_toboolean(l, n);
+                }
                 throw clg_exception("not an integer");
             }
             return lua_tointeger(l, n);
