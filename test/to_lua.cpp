@@ -20,6 +20,11 @@ BOOST_AUTO_TEST_CASE(to_string) {
     clg::push_to_lua(v, std::string("zhopa"));
     BOOST_CHECK_EQUAL(clg::get_from_lua<std::string>(v), "zhopa");
 }
+BOOST_AUTO_TEST_CASE(to_cstring) {
+    clg::vm v;
+    clg::push_to_lua(v, "zhopa");
+    BOOST_CHECK_EQUAL(clg::get_from_lua<std::string>(v), "zhopa");
+}
 BOOST_AUTO_TEST_CASE(to_bool) {
     clg::vm v;
     clg::push_to_lua(v, true);

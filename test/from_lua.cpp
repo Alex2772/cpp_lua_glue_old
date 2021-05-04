@@ -19,6 +19,11 @@ BOOST_AUTO_TEST_CASE(return_string) {
     auto x = v.do_string<std::string>("return \"call\"");
     BOOST_CHECK_EQUAL(x, "call");
 }
+BOOST_AUTO_TEST_CASE(return_cstring) {
+    clg::vm v;
+    auto x = v.do_string<const char*>("return \"azaza\"");
+    BOOST_CHECK_EQUAL(std::string(x), "azaza");
+}
 BOOST_AUTO_TEST_CASE(return_bool) {
     clg::vm v;
     auto x = v.do_string<bool>("return true");

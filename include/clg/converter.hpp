@@ -6,6 +6,7 @@
 
 #include "lua.hpp"
 #include "exception.hpp"
+#include <tuple>
 
 namespace clg {
 
@@ -69,6 +70,32 @@ namespace clg {
         }
         static int to_lua(lua_State* l, const std::string& v) {
             lua_pushstring(l, v.c_str());
+            return 1;
+        }
+    };
+    template<>
+    struct converter<const char*> {
+        static const char* from_lua(lua_State* l, int n) {
+            if (!lua_isstring(l, n)) {
+                throw clg_exception("not a string");
+            }
+            return lua_tostring(l, n);
+        }
+        static int to_lua(lua_State* l, const char* v) {
+            lua_pushstring(l, v);
+            return 1;
+        }
+    };
+    template<int N>
+    struct converter<char[N]> {
+        static const char* from_lua(lua_State* l, int n) {
+            if (!lua_isstring(l, n)) {
+                throw clg_exception("not a string");
+            }
+            return lua_tostring(l, n);
+        }
+        static int to_lua(lua_State* l, const char* v) {
+            lua_pushstring(l, v);
             return 1;
         }
     };
