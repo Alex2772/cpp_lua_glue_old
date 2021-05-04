@@ -12,10 +12,6 @@ namespace clg {
     public:
         using std::runtime_error::runtime_error;
     };
-    class syntax_error: public clg_exception {
-    public:
-        using clg_exception::clg_exception;
-    };
     class lua_exception: public clg_exception {
     public:
         using clg_exception::clg_exception;

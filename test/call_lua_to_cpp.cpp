@@ -116,6 +116,21 @@ BOOST_AUTO_TEST_CASE(call_many_args1) {
     v.do_string<void>("call(1,2,3,4,5,6,7,8)");
 }
 
+void func_exception() {
+    throw std::runtime_error("ti loh");
+}
+
+BOOST_AUTO_TEST_CASE(call_exception) {
+    clg::vm v;
+    v.register_function<func_exception>("call");
+    BOOST_CHECK_THROW(v.do_string<void>("call()"), clg::lua_exception);
+    try {
+        v.do_string<void>("call()");
+    } catch (const std::exception& e) {
+        std::cout << "exception: " << e.what() << std::endl;
+    }
+}
+
 
 void func_call_many_args2(int v1, int v2, const char* v3, int v4, int v5, int v6, int v7, int v8) {
     BOOST_CHECK_EQUAL(v1, 60);

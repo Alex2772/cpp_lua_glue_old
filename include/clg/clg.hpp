@@ -21,7 +21,7 @@ namespace clg {
         lua_State* mState;
 
         void throw_syntax_error() {
-            throw syntax_error(get_from_lua<std::string>(mState));
+            throw lua_exception(get_from_lua<std::string>(mState));
         }
 
         void register_function_raw(const std::string& name, int(* function)(lua_State* s)) {
@@ -36,13 +36,18 @@ namespace clg {
             template<function_t f>
             struct instance {
                 static int call(lua_State* s) {
-                    if constexpr (std::is_same_v<void, Return>) {
-                        // ничего не возвращается
-                        f(clg::get_from_lua<std::decay_t<Args>>(s)...);
+                    try {
+                        if constexpr (std::is_same_v<void, Return>) {
+                            // ничего не возвращается
+                            f(clg::get_from_lua<std::decay_t<Args>>(s)...);
+                            return 0;
+                        } else {
+                            // возвращаем одно значение
+                            return clg::push_to_lua(s, f(clg::get_from_lua<std::decay_t<Args>>(s)...));
+                        }
+                    } catch (const std::exception& e) {
+                        luaL_error(s, "cpp exception: %s", e.what());
                         return 0;
-                    } else {
-                        // возвращаем одно значение
-                        return clg::push_to_lua(s, f(clg::get_from_lua<std::decay_t<Args>>(s)...));
                     }
                 }
             };
