@@ -9,7 +9,6 @@
 
 namespace clg {
 
-
     template<typename T>
     struct converter {
         static T from_lua(lua_State* l, int n) {
@@ -86,6 +85,25 @@ namespace clg {
             return 1;
         }
     };
+
+    template<>
+    struct converter<std::nullptr_t> {
+        static std::nullptr_t from_lua(lua_State* l, int n) {
+            if (!lua_isnil(l, n)) {
+                throw clg_exception("not a nil");
+            }
+            return nullptr;
+        }
+        static int to_lua(lua_State* l, std::nullptr_t v) {
+            lua_pushnil(l);
+            return 1;
+        }
+    };
+
+
+    /**
+     * userdata
+     */
     template<typename T>
     struct converter<T*> {
         static T* from_lua(lua_State* l, int n) {
@@ -106,6 +124,13 @@ namespace clg {
         lua_pop(l, 1);
         return t;
     }
+
+    /**
+     * @tparam T
+     * @param l
+     * @param value
+     * @return количество запушенных значений
+     */
     template<typename T>
     static int push_to_lua(lua_State* l, const T& value) {
         return converter<T>::to_lua(l, value);

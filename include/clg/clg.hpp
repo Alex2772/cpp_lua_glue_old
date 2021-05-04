@@ -6,6 +6,7 @@
 
 #include "lua.hpp"
 #include "converter.hpp"
+#include "dynamic_result.hpp"
 
 #include <cstring>
 
@@ -62,7 +63,7 @@ namespace clg {
             register_function_raw(name, my_instance::call);
         }
 
-        template<typename ReturnType>
+        template<typename ReturnType = void>
         ReturnType do_string(const std::string& exec) {
             if (luaL_dostring(mState, exec.c_str()) != 0) {
                 throw_syntax_error();
@@ -71,7 +72,7 @@ namespace clg {
                 return get_from_lua<ReturnType>(mState);
             }
         }
-        template<typename ReturnType>
+        template<typename ReturnType = void>
         ReturnType do_file(const std::string& exec) {
             if (luaL_dofile(mState, exec.c_str()) != 0) {
                 throw_syntax_error();
@@ -106,7 +107,7 @@ namespace clg {
                 lua_getglobal(mClg, mName.c_str());
             }
 
-            void do_call(unsigned args, unsigned results) {
+            void do_call(unsigned args, int results) {
                 if (lua_pcall(mClg, args, results, 0)) {
                     throw lua_exception(get_from_lua<std::string>(mClg));
                 }
@@ -124,8 +125,15 @@ namespace clg {
                 push_function_to_be_called();
                 push(std::forward<Args>(args)...);
 
-                do_call(sizeof...(args), 1);
-                return get_from_lua<Return>(mClg);
+                if constexpr (std::is_same_v<Return, dynamic_result>) {
+                    do_call(sizeof...(args), LUA_MULTRET);
+                    return get_from_lua<Return>(mClg);
+                } else if constexpr (std::is_same_v<Return, void>) {
+                    do_call(sizeof...(args), 0);
+                } else {
+                    do_call(sizeof...(args), 1);
+                    return get_from_lua<Return>(mClg);
+                }
             }
         };
 

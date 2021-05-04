@@ -24,4 +24,36 @@ BOOST_AUTO_TEST_CASE(call_return_multiple_args) {
     int x = v["sum_plus_3"].call<int>(228, 322);
     BOOST_CHECK_EQUAL(x, 553);
 }
+BOOST_AUTO_TEST_CASE(call_mutiple_return_multiple_args) {
+    clg::vm v;
+    v.do_string<>("function get(a) if a == 1 then return 1, 'govno' else return nil end end");
+    //v.do_string<>("function get(a) return 1, \"govno\" end");
+
+    auto check = [](const clg::dynamic_result& r) {
+        auto s = r.size();
+        switch (s) {
+            case 2:
+                BOOST_TEST(!r.is_nil(0));
+                BOOST_TEST(!r.is_nil(1));
+
+                BOOST_CHECK_EQUAL(r.get<int>(0), 1);
+                BOOST_CHECK_EQUAL(r.get<std::string>(1), "govno");
+                break;
+
+            case 1:
+                BOOST_TEST(r.is_nil(0));
+                break;
+
+            default:
+
+                BOOST_FAIL("dynamic_result has an incorrect size! " + std::to_string(s));
+        }
+    };
+
+    check(v["get"].call<clg::dynamic_result>(0));
+    check(v["get"].call<clg::dynamic_result>(1));
+
+
+
+}
 BOOST_AUTO_TEST_SUITE_END()
