@@ -37,6 +37,13 @@ namespace clg {
             struct instance {
                 static int call(lua_State* s) {
                     try {
+                        size_t argsCount = lua_gettop(s);
+                        if (argsCount != sizeof...(Args)) {
+                            throw std::runtime_error("invalid argument count! expected "
+                                                     + std::to_string(sizeof...(Args))
+                                                     + ", actual " + std::to_string(argsCount));
+                        }
+
                         if constexpr (std::is_same_v<void, Return>) {
                             // ничего не возвращается
                             f(clg::get_from_lua<std::decay_t<Args>>(s)...);
