@@ -20,17 +20,24 @@ namespace clg {
         }
     };
 
-    template<>
-    struct converter<int> {
-        static int from_lua(lua_State* l, int n) {
-            if (!lua_isinteger(l, n)) {
-                if (lua_isboolean(l, n)) {
-                    return lua_toboolean(l, n);
-                }
-                throw clg_exception("not an integer");
+    template<typename T>
+    struct converter_number {
+        static T from_lua(lua_State* l, int n) {
+            if (lua_isinteger(l, n)) {
+                return static_cast<T>(lua_tointeger(l, n));
             }
-            return lua_tointeger(l, n);
+            if (lua_isboolean(l, n)) {
+                return static_cast<T>(lua_toboolean(l, n));
+            }
+            if (lua_isnumber(l, n)) {
+                return static_cast<T>(lua_tonumber(l, n));
+            }
+            throw clg_exception("not an integer, number or boolean");
         }
+    };
+
+    template<>
+    struct converter<int>: converter_number<int>{
         static int to_lua(lua_State* l, int v) {
             lua_pushinteger(l, v);
             return 1;
@@ -38,31 +45,16 @@ namespace clg {
     };
 
     template<>
-    struct converter<float> {
-        static float from_lua(lua_State* l, int n) {
-            if (!lua_isnumber(l, n)) {
-                throw clg_exception("not a float");
-            }
-            return lua_tonumber(l, n);
-        }
+    struct converter<float>: converter_number<float>{
         static int to_lua(lua_State* l, float v) {
             lua_pushnumber(l, v);
             return 1;
         }
     };
+
     template<>
-    struct converter<double> {
-        static double from_lua(lua_State* l, int n) {
-            if (!lua_isnumber(l, n)) {
-                throw clg_exception("not a double");
-            }
-            return lua_tonumber(l, n);
-        }
-        static int to_lua(lua_State* l, double v) {
-            lua_pushnumber(l, v);
-            return 1;
-        }
-    };
+    struct converter<double>: converter<float>{};
+
     template<>
     struct converter<std::string> {
         static std::string from_lua(lua_State* l, int n) {

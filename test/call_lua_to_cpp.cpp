@@ -132,24 +132,18 @@ BOOST_AUTO_TEST_CASE(call_exception) {
 }
 
 
-void func_call_many_args2(int v1, int v2, const char* v3, int v4, int v5, int v6, int v7, int v8) {
-    BOOST_CHECK_EQUAL(v1, 60);
-    BOOST_CHECK_EQUAL(v2, 6);
-    BOOST_CHECK_EQUAL(std::string(v3), "texture/ui/life.png");
-    BOOST_CHECK_EQUAL(v4, 60);
-    BOOST_CHECK_EQUAL(v5, 5);
-    BOOST_CHECK_EQUAL(v6, 0);
-    BOOST_CHECK_EQUAL(v7, 0);
-    BOOST_CHECK_EQUAL(v8, 1);
+void func_call_invalid_args(int f, double d) {
+    BOOST_CHECK_EQUAL(f, 16);
+    BOOST_CHECK_CLOSE(d, 13, 0.01);
 }
 
-BOOST_AUTO_TEST_CASE(call_many_args2) {
+BOOST_AUTO_TEST_CASE(call_invalid_args) {
     clg::vm v;
-    v.register_function<func_call_many_args2>("call");
-    //v.do_string<void>("TRUE = 1\ncall(1,2,'loh',4,5,6,7,8,TRUE)");
+    v.register_function<func_call_invalid_args>("call");
 
-    v.do_string<void>("call( 60          ,6,     \"texture/ui/life.png\", 60, 5       , 0, 0, true )");
+    v.do_string<void>("call(16.1, 13)");
 }
+
 
 
 BOOST_AUTO_TEST_SUITE_END()
