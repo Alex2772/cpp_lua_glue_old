@@ -10,6 +10,12 @@
 
 namespace clg {
 
+    static std::string any_to_string(lua_State* l, int n) {
+        size_t len;
+        auto c = luaL_tolstring(l, n, &len);
+        return std::string(c, c + len);
+    }
+
     template<typename T>
     struct converter {
         static T from_lua(lua_State* l, int n) {
@@ -19,6 +25,12 @@ namespace clg {
             throw clg_exception("unimplemented converter");
         }
     };
+    
+    namespace detail {
+        static void throw_converter_error(lua_State* l, int n, const char* message) {
+            throw clg_exception(any_to_string(l, n) + " is " + message);
+        }
+    }
 
     template<typename T>
     struct converter_number {
@@ -32,7 +44,8 @@ namespace clg {
             if (lua_isnumber(l, n)) {
                 return static_cast<T>(lua_tonumber(l, n));
             }
-            throw clg_exception("not an integer, number or boolean");
+            detail::throw_converter_error(l, n, "not an integer, number or boolean");
+            throw;
         }
     };
 
@@ -59,7 +72,7 @@ namespace clg {
     struct converter<std::string> {
         static std::string from_lua(lua_State* l, int n) {
             if (!lua_isstring(l, n)) {
-                throw clg_exception("not a string");
+                detail::throw_converter_error(l, n, "not a string");
             }
             return lua_tostring(l, n);
         }
@@ -72,7 +85,7 @@ namespace clg {
     struct converter<const char*> {
         static const char* from_lua(lua_State* l, int n) {
             if (!lua_isstring(l, n)) {
-                throw clg_exception("not a string");
+                detail::throw_converter_error(l, n, "not a string");
             }
             return lua_tostring(l, n);
         }
@@ -85,7 +98,7 @@ namespace clg {
     struct converter<char[N]> {
         static const char* from_lua(lua_State* l, int n) {
             if (!lua_isstring(l, n)) {
-                throw clg_exception("not a string");
+                detail::throw_converter_error(l, n, "not a string");
             }
             return lua_tostring(l, n);
         }
@@ -98,7 +111,7 @@ namespace clg {
     struct converter<bool> {
         static bool from_lua(lua_State* l, int n) {
             if (!lua_isboolean(l, n)) {
-                throw clg_exception("not a boolean");
+                detail::throw_converter_error(l, n, "not a boolean");
             }
             return lua_toboolean(l, n);
         }
@@ -112,7 +125,7 @@ namespace clg {
     struct converter<std::nullptr_t> {
         static std::nullptr_t from_lua(lua_State* l, int n) {
             if (!lua_isnil(l, n)) {
-                throw clg_exception("not a nil");
+                detail::throw_converter_error(l, n, "not a nil");
             }
             return nullptr;
         }
@@ -130,7 +143,7 @@ namespace clg {
     struct converter<T*> {
         static T* from_lua(lua_State* l, int n) {
             if (!lua_islightuserdata(l, n)) {
-                throw clg_exception("not a userdata");
+                detail::throw_converter_error(l, n, "not a userdata");
             }
             return reinterpret_cast<T*>(lua_touserdata(l, n));
         }
