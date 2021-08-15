@@ -8,8 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 add_library(cpp_lua_glue INTERFACE)
 target_include_directories(cpp_lua_glue INTERFACE include)
 
-if(ENABLE_TESTS)
-
+if(NOT TARGET lua)
     file(GLOB RESULT lua)
     list(LENGTH RESULT RES_LEN)
     if(RES_LEN EQUAL 0)
@@ -53,7 +52,9 @@ if(ENABLE_TESTS)
         target_include_directories(lua PUBLIC lua/)
     endif()
     target_link_libraries(cpp_lua_glue INTERFACE lua)
+endif()
 
+if(ENABLE_TESTS)
     # test
     find_package(Boost 1.66.0 COMPONENTS system thread unit_test_framework REQUIRED)
     file(GLOB_RECURSE TEST_SRCS test/*.cpp)
