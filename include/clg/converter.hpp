@@ -175,7 +175,7 @@ namespace clg {
     struct converter<std::tuple<Args...>> {
         static int to_lua(lua_State* l, const std::tuple<Args...>& v) {
             converter<std::tuple<Args...>> t(l);
-            std::apply([&](Args... a) {
+            (std::apply)([&](Args... a) {
                 t.push(std::forward<Args>(a)...);
             }, v);
             return sizeof...(Args);
