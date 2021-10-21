@@ -28,6 +28,22 @@ namespace clg {
             lua_register(mState, name.c_str(), function);
         }
 
+        template<typename... TupleArgs>
+        struct tuple_fill_from_lua_helper {
+            lua_State* l;
+            tuple_fill_from_lua_helper(lua_State* l) : l(l) {}
+
+            using target_tuple = std::tuple<TupleArgs...>;
+
+            template<unsigned index>
+            void fill(target_tuple& t) {}
+
+            template<unsigned index, typename Arg, typename... Args>
+            void fill(target_tuple& t) {
+                std::get<index>(t) = clg::get_from_lua<Arg>(l, index + 1);
+                fill<index + 1, Args...>(t);
+            }
+        };
 
         template<typename Return, typename... Args>
         struct register_function_helper {
@@ -44,13 +60,16 @@ namespace clg {
                                                      + ", actual " + std::to_string(argsCount));
                         }
 
+                        std::tuple<std::decay_t<Args>...> argsTuple;
+                        tuple_fill_from_lua_helper<std::decay_t<Args>...>(s).template fill<0, std::decay_t<Args>...>(argsTuple);
+                        lua_pop(s, sizeof...(Args));
                         if constexpr (std::is_same_v<void, Return>) {
                             // ничего не возвращается
-                            f(clg::get_from_lua<std::decay_t<Args>>(s)...);
+                            (std::apply)(f, argsTuple);
                             return 0;
                         } else {
                             // возвращаем одно значение
-                            return clg::push_to_lua(s, f(clg::get_from_lua<std::decay_t<Args>>(s)...));
+                            return clg::push_to_lua(s, (std::apply)(f, argsTuple));
                         }
                     } catch (const std::exception& e) {
                         luaL_error(s, "cpp exception: %s", e.what());
