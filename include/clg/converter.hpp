@@ -160,6 +160,11 @@ namespace clg {
         return t;
     }
 
+    template<typename T>
+    static T get_from_lua(lua_State* l, unsigned index) {
+        return converter<T>::from_lua(l, index);;
+    }
+
     /**
      * @tparam T
      * @param l
