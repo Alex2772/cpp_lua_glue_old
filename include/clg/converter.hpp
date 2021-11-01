@@ -56,6 +56,13 @@ namespace clg {
             return 1;
         }
     };
+    template<>
+    struct converter<unsigned>: converter_number<unsigned>{
+        static unsigned to_lua(lua_State* l, unsigned v) {
+            lua_pushinteger(l, v);
+            return 1;
+        }
+    };
 
     template<>
     struct converter<float>: converter_number<float>{

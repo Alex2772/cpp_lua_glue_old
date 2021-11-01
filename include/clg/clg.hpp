@@ -7,6 +7,7 @@
 #include "lua.hpp"
 #include "converter.hpp"
 #include "dynamic_result.hpp"
+#include "lua_function.hpp"
 
 #include <cstring>
 
@@ -117,64 +118,15 @@ namespace clg {
             return mState;
         }
 
-        class function_call {
-            friend class state_interface;
-        private:
-            state_interface& mClg;
-            const std::string& mName;
-            function_call(const std::string& name, state_interface& clg) : mName(name), mClg(clg) {}
 
-
-            template<typename Arg, typename... Args>
-            void push(Arg&& arg, Args&&... args) {
-                push_to_lua(mClg, std::forward<Arg>(arg));
-
-                push(std::forward<Args>(args)...);
-            }
-
-            void push() {}
-
-            void push_function_to_be_called() {
-                lua_getglobal(mClg, mName.c_str());
-            }
-
-            void do_call(unsigned args, int results) {
-                if (lua_pcall(mClg, args, results, 0)) {
-                    throw lua_exception(get_from_lua<std::string>(mClg));
-                }
-            }
-        public:
-
-            template<typename... Args>
-            void operator()(Args&&... args) {
-                push_function_to_be_called();
-                push(std::forward<Args>(args)...);
-                do_call(sizeof...(args), 0);
-            }
-            template<typename Return, typename... Args>
-            Return call(Args&&... args) {
-                push_function_to_be_called();
-                push(std::forward<Args>(args)...);
-
-                if constexpr (std::is_same_v<Return, dynamic_result>) {
-                    do_call(sizeof...(args), LUA_MULTRET);
-                    return get_from_lua<Return>(mClg);
-                } else if constexpr (std::is_same_v<Return, void>) {
-                    do_call(sizeof...(args), 0);
-                } else {
-                    do_call(sizeof...(args), 1);
-                    return get_from_lua<Return>(mClg);
-                }
-            }
-        };
 
         /**
-         * Вызов глобальной переменной.
+         * Вызов глобальной функции.
          *
          * @param v название функции для вызова
          * @return обёртка для передачи аргументов в функцию
          */
-        function_call operator[](const std::string& v) {
+        lua_function operator[](const std::string& v) {
             return {v, *this};
         }
     };
