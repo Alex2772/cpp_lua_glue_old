@@ -6,14 +6,13 @@
 
 #include "lua.hpp"
 #include "exception.hpp"
+#include "util.hpp"
 #include <tuple>
 
 namespace clg {
 
     static std::string any_to_string(lua_State* l, int n) {
-        size_t len;
-        auto c = luaL_tolstring(l, n, &len);
-        return std::string(c, c + len);
+        return lua_typename(l, lua_type(l, n));
     }
 
     template<typename T>
@@ -101,6 +100,12 @@ namespace clg {
             return 1;
         }
     };
+    template<>
+    struct converter<void*> {
+        static void* from_lua(lua_State* l, int n) {
+            return nullptr;
+        }
+    };
     template<int N>
     struct converter<char[N]> {
         static const char* from_lua(lua_State* l, int n) {
@@ -149,13 +154,22 @@ namespace clg {
     template<typename T>
     struct converter<T*> {
         static T* from_lua(lua_State* l, int n) {
-            if (!lua_islightuserdata(l, n)) {
-                detail::throw_converter_error(l, n, "not a userdata");
+            if (lua_islightuserdata(l, n)) {
+                return reinterpret_cast<T*>(lua_touserdata(l, n));
+            } else if (lua_istable(l, n)) {
+                // TODO table
             }
-            return reinterpret_cast<T*>(lua_touserdata(l, n));
+            detail::throw_converter_error(l, n, "not a userdata nor table");
         }
         static int to_lua(lua_State* l, T* v) {
+            auto classname = clg::class_name<T>();
             lua_pushlightuserdata(l, v);
+            luaL_getmetatable(l, classname.c_str());
+            if (lua_isnil(l, -1)) {
+                lua_pop(l, 1);
+            } else {
+                lua_setmetatable(l, -2);
+            }
             return 1;
         }
     };

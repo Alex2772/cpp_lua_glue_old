@@ -144,6 +144,36 @@ BOOST_AUTO_TEST_CASE(call_invalid_args) {
     v.do_string<void>("call(16.1, 13)");
 }
 
+void check228(int v) {
+    called = true;
+    BOOST_CHECK_EQUAL(v, 228);
+}
+
+BOOST_AUTO_TEST_CASE(lambda) {
+    clg::vm v;
+    called = false;
+    v.register_function("sum", [](int a, int b) {
+        return a + b;
+    });
+    v.register_function<check228>("check228");
+    v.do_string<void>("check228(sum(227, 1))");
+
+    BOOST_TEST(called);
+}
+
+BOOST_AUTO_TEST_CASE(lambda_with_capture) {
+    clg::vm v;
+    called = false;
+    int s = 0;
+    v.register_function("sum", [&](int a, int b) {
+        return s = (a + b);
+    });
+    v.register_function<check228>("check228");
+    v.do_string<void>("check228(sum(227, 1))");
+
+    BOOST_CHECK_EQUAL(s, 228);
+    BOOST_TEST(called);
+}
 
 
 BOOST_AUTO_TEST_SUITE_END()

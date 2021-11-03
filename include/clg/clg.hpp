@@ -8,10 +8,14 @@
 #include "converter.hpp"
 #include "dynamic_result.hpp"
 #include "lua_function.hpp"
+#include "util.hpp"
 
 #include <cstring>
 
 namespace clg {
+
+    template<class C>
+    class class_registrar;
 
 
     /**
@@ -28,6 +32,8 @@ namespace clg {
         void register_function_raw(const std::string& name, int(* function)(lua_State* s)) {
             lua_register(mState, name.c_str(), function);
         }
+
+    public:
 
         template<typename... TupleArgs>
         struct tuple_fill_from_lua_helper {
@@ -85,14 +91,72 @@ namespace clg {
             return {};
         }
 
-    public:
+        template<class...>
+        struct types {
+            using type = types;
+        };
+
+        template<typename Sig>
+        struct callable_class_info;
+
+        template<typename Class, typename R, typename... Args>
+        struct callable_class_info<R(Class::*)(Args...) const> {
+            using class_t = Class;
+            using args = types<Args...>;
+            using return_t = R;
+        };
+        template<typename Class, typename R, typename... Args>
+        struct callable_class_info<R(Class::*)(Args...)> {
+            using class_t = Class;
+            using args = types<Args...>;
+            using return_t = R;
+        };
+
+        template<typename Callable>
+        struct callable_helper {
+            using function_info = callable_class_info<decltype(&Callable::operator())>;
+
+            template<typename... Args>
+            struct wrapper_function_helper_t {};
+            template<typename... Args>
+            struct wrapper_function_helper_t<types<Args...>> {
+                static typename function_info::return_t wrapper_function(Args... args) {
+                    if (std::is_same_v<typename function_info::return_t, void>) {
+                        (*callable())(args...);
+                    } else {
+                        return (*callable())(args...);
+                    }
+                }
+            };
+
+            using wrapper_function_helper = wrapper_function_helper_t<typename function_info::args>;
+
+            static Callable*& callable() {
+                static Callable* callable;
+                return callable;
+            }
+
+        };
+
         explicit state_interface(lua_State* state) : mState(state) {}
+
+
+        template<class C>
+        class_registrar<C> register_class() {
+            return class_registrar<C>(*this);
+        }
 
         template<auto f>
         void register_function(const std::string& name) {
             using my_register_function_helper = decltype(make_register_function_helper(f));
             using my_instance = typename my_register_function_helper::template instance<f>;
             register_function_raw(name, my_instance::call);
+        }
+        template<typename Callable>
+        void register_function(const std::string& name, Callable callable) {
+            using helper = callable_helper<Callable>;
+            helper::callable() = new Callable(std::move(callable));
+            register_function<helper::wrapper_function_helper::wrapper_function>(name);
         }
 
         template<typename ReturnType = void>
@@ -119,7 +183,6 @@ namespace clg {
         }
 
 
-
         /**
          * Вызов глобальной функции.
          *
@@ -128,6 +191,13 @@ namespace clg {
          */
         lua_function operator[](const std::string& v) {
             return {v, *this};
+        }
+
+        void stacktrace() {
+            int t = lua_gettop(mState);
+            for (int i = 0; i <= t; ++i) {
+                std::cout << "[" << i << "] " << any_to_string(mState, i) << std::endl;
+            }
         }
     };
 
@@ -143,5 +213,8 @@ namespace clg {
         ~vm() {
             lua_close(*this);
         }
+
     };
 }
+
+#include "class_registrar.hpp"

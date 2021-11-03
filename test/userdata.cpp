@@ -9,6 +9,10 @@ struct user {
     std::string name;
 };
 
+BOOST_AUTO_TEST_CASE(class_name) {
+    BOOST_CHECK_EQUAL("user", clg::class_name<user>());
+}
+
 BOOST_AUTO_TEST_CASE(check1) {
     user u;
     u.id = 228;
