@@ -15,6 +15,12 @@ namespace clg {
         return lua_typename(l, lua_type(l, n));
     }
 
+    namespace detail {
+        static void throw_converter_error(lua_State* l, int n, const char* message) {
+            throw clg_exception(any_to_string(l, n) + " is " + message);
+        }
+    }
+
     template<typename T>
     struct converter {
         static T from_lua(lua_State* l, int n) {
@@ -47,12 +53,6 @@ namespace clg {
             throw clg_exception("unimplemented converter");
         }
     };
-    
-    namespace detail {
-        static void throw_converter_error(lua_State* l, int n, const char* message) {
-            throw clg_exception(any_to_string(l, n) + " is " + message);
-        }
-    }
 
     template<>
     struct converter<std::string> {

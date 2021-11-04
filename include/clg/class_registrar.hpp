@@ -119,9 +119,9 @@ namespace clg {
             return *this;
         }
 
-        template<auto method>
+        template<auto m>
         class_registrar<C>& method(const std::string& name) {
-            using wrapper_function_helper = typename method_helper<method>::wrapper_function_helper;
+            using wrapper_function_helper = typename method_helper<m>::wrapper_function_helper;
             using my_instance = typename wrapper_function_helper::my_instance;
             mMethods.push_back({
                name,
