@@ -5,6 +5,8 @@
 #pragma once
 
 #include "clg.hpp"
+#include <vector>
+#include <cassert>
 
 namespace clg {
     template<class C>
@@ -55,53 +57,54 @@ namespace clg {
         };
 
         static int gc(lua_State* l) {
-            delete reinterpret_cast<C*>(lua_touserdata(l, 0));
-
+            if (lua_isuserdata(l, 1)) {
+                delete* reinterpret_cast<C**>(lua_touserdata(l, 1));
+            }
             return 0;
         }
 
     public:
         ~class_registrar() {
-            std::vector<luaL_Reg> entries;
+            std::vector<luaL_Reg> methods;
+            std::vector<luaL_Reg> staticFunctions;
+            auto top = lua_gettop(mClg);
+
             for (auto& c : mConstructors) {
-                entries.push_back({"new", c});
+                staticFunctions.push_back({"new", c});
             }
             for (auto& c : mMethods) {
-                entries.push_back({c.name.c_str(), c.cFunction});
+                methods.push_back({c.name.c_str(), c.cFunction});
             }
-            entries.push_back({nullptr, nullptr});
-            const luaL_Reg meta[] = {
-                    { "__gc", gc },
-                    { nullptr, nullptr }
-            };
+
+            methods.push_back({nullptr, nullptr});
+            staticFunctions.push_back({nullptr, nullptr});
+
             auto classname = clg::class_name<C>();
-            luaL_newlib(mClg, entries.data());
+
+            // clazz = staticFunctions
+            luaL_newlib(mClg, staticFunctions.data());
+            int clazzId = lua_gettop(mClg);
+
+            // metatable = { __gc = ... }
             luaL_newmetatable(mClg, classname.c_str());
+            int metatableId = lua_gettop(mClg);
+            luaL_Reg metatableFunctions[] = {
+                    { "__gc", gc },
+                    { nullptr },
+            };
+            luaL_setfuncs(mClg, metatableFunctions, 0);
 
-            int lib_id, meta_id;
+            // metatable.__index = methods
+            luaL_newlib(mClg, methods.data());
+            lua_setfield(mClg, metatableId, "__index");
 
-            /* newclass = {} */
-            lua_createtable(mClg, 0, 0);
-            lib_id = lua_gettop(mClg);
+            // setmetatable(clazz, metatable)
+            lua_setmetatable(mClg, clazzId);
 
-            /* metatable = {} */
-            luaL_newmetatable(mClg, classname.c_str());
-            meta_id = lua_gettop(mClg);
-            luaL_setfuncs(mClg, meta, 0);
 
-            /* metatable.__index = _methods */
-            luaL_newlib(mClg, entries.data());
-            lua_setfield(mClg, meta_id, "__index");
-
-            /* metatable.__metatable = meta */
-            luaL_newlib(mClg, meta);
-            lua_setfield(mClg, meta_id, "__metatable");
-
-            /* class.__metatable = metatable */
-            lua_setmetatable(mClg, lib_id);
-
-            /* _G["Foo"] = newclass */
+            // _G["Classname"] = clazz
             lua_setglobal(mClg, classname.c_str());
+            assert(top == lua_gettop(mClg));
         }
 
 

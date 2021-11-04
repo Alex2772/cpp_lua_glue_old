@@ -18,9 +18,32 @@ namespace clg {
     template<typename T>
     struct converter {
         static T from_lua(lua_State* l, int n) {
+            if constexpr (std::is_integral_v<T> || std::is_floating_point_v<T>) {
+                if (lua_isinteger(l, n)) {
+                    return static_cast<T>(lua_tointeger(l, n));
+                }
+                if (lua_isboolean(l, n)) {
+                    return static_cast<T>(lua_toboolean(l, n));
+                }
+                if (lua_isnumber(l, n)) {
+                    return static_cast<T>(lua_tonumber(l, n));
+                }
+                detail::throw_converter_error(l, n, "not a integer, nor boolean nor number");
+            }
             throw clg_exception("unimplemented converter");
         }
-        static int to_lua(lua_State* l, const T&) {
+        static int to_lua(lua_State* l, const T& v) {
+            if constexpr (std::is_integral_v<T>) {
+                if constexpr (std::is_same_v<T, bool>) {
+                    lua_pushboolean(l, v);
+                } else {
+                    lua_pushinteger(l, v);
+                }
+                return 1;
+            } else if constexpr (std::is_floating_point_v<T>) {
+                lua_pushnumber(l, v);
+                return 1;
+            }
             throw clg_exception("unimplemented converter");
         }
     };
@@ -30,49 +53,6 @@ namespace clg {
             throw clg_exception(any_to_string(l, n) + " is " + message);
         }
     }
-
-    template<typename T>
-    struct converter_number {
-        static T from_lua(lua_State* l, int n) {
-            if (lua_isinteger(l, n)) {
-                return static_cast<T>(lua_tointeger(l, n));
-            }
-            if (lua_isboolean(l, n)) {
-                return static_cast<T>(lua_toboolean(l, n));
-            }
-            if (lua_isnumber(l, n)) {
-                return static_cast<T>(lua_tonumber(l, n));
-            }
-            detail::throw_converter_error(l, n, "not an integer, number or boolean");
-            throw;
-        }
-    };
-
-    template<>
-    struct converter<int>: converter_number<int>{
-        static int to_lua(lua_State* l, int v) {
-            lua_pushinteger(l, v);
-            return 1;
-        }
-    };
-    template<>
-    struct converter<unsigned>: converter_number<unsigned>{
-        static unsigned to_lua(lua_State* l, unsigned v) {
-            lua_pushinteger(l, v);
-            return 1;
-        }
-    };
-
-    template<>
-    struct converter<float>: converter_number<float>{
-        static int to_lua(lua_State* l, float v) {
-            lua_pushnumber(l, v);
-            return 1;
-        }
-    };
-
-    template<>
-    struct converter<double>: converter<float>{};
 
     template<>
     struct converter<std::string> {
@@ -154,16 +134,15 @@ namespace clg {
     template<typename T>
     struct converter<T*> {
         static T* from_lua(lua_State* l, int n) {
-            if (lua_islightuserdata(l, n)) {
-                return reinterpret_cast<T*>(lua_touserdata(l, n));
-            } else if (lua_istable(l, n)) {
-                // TODO table
+            if (lua_isuserdata(l, n)) {
+                return *reinterpret_cast<T**>(lua_touserdata(l, n));
             }
             detail::throw_converter_error(l, n, "not a userdata nor table");
         }
         static int to_lua(lua_State* l, T* v) {
             auto classname = clg::class_name<T>();
-            lua_pushlightuserdata(l, v);
+            T** t = reinterpret_cast<T**>(lua_newuserdata(l, sizeof(T*)));
+            *t = v;
             luaL_getmetatable(l, classname.c_str());
             if (lua_isnil(l, -1)) {
                 lua_pop(l, 1);

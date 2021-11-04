@@ -7,6 +7,7 @@ BOOST_AUTO_TEST_SUITE(classes)
 thread_local bool constructorCalled = false;
 thread_local bool destructorCalled = false;
 thread_local bool check = false;
+thread_local bool checkAnimal = false;
 
 class Person {
 private:
@@ -45,6 +46,22 @@ public:
     }
 };
 
+
+class Animal {
+private:
+    std::string mName;
+
+public:
+    Animal(const std::string& name) : mName(name) {
+
+    }
+
+    void check() {
+        BOOST_TEST(mName == "azaza");
+        checkAnimal = true;
+    }
+};
+
 BOOST_AUTO_TEST_CASE(class_name) {
     BOOST_CHECK_EQUAL("Person", clg::class_name<Person>());
 }
@@ -54,7 +71,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
     v.register_class<Person>()
             .constructor<std::string, std::string>();
 
-    v.do_string<void>("p = Person:new('loh', 'bolotniy')");
+    v.do_string<void>("print(type(Person))\nfor i in pairs(Person) do print(i)\n end\np = Person:new('loh', 'bolotniy')");
     BOOST_TEST(constructorCalled);
 }
 
@@ -113,6 +130,49 @@ BOOST_AUTO_TEST_CASE(destructor) {
         BOOST_TEST(constructorCalled);
     }
     BOOST_TEST(destructorCalled);
+}
+
+BOOST_AUTO_TEST_CASE(return_class) {
+    constructorCalled = false;
+    check = false;
+    clg::vm v;
+    v.register_function("check", [](int c) {
+        BOOST_CHECK_EQUAL(c, 123);
+    });
+    v.register_function("makePerson", []() {
+        return new Person("loh", "bolotniy");
+    });
+    v.register_class<Person>()
+            .method<&Person::simpleCallRet>("simpleCallRet");
+
+    v.do_string<void>("p = makePerson()\ncheck(p:simpleCallRet(228, 322))");
+    BOOST_TEST(constructorCalled);
+    BOOST_TEST(check);
+}
+BOOST_AUTO_TEST_CASE(multiple_clases) {
+    check = false;
+    checkAnimal = false;
+
+    clg::vm v;
+    v.register_class<Person>()
+            .constructor<std::string, std::string>()
+            .method<&Person::simpleCall>("simpleCall");
+    v.register_class<Animal>()
+            .constructor<std::string>()
+            .method<&Animal::check>("check");
+
+    v.do_string<void>("p = Person:new('loh', 'bolotniy')\np:simpleCall()");
+    BOOST_TEST(check);
+    check = false;
+    v.do_string<void>("a = Animal:new('azaza')\na:check()");
+    BOOST_TEST(checkAnimal);
+    BOOST_TEST(!check);
+    checkAnimal = false;
+    v.do_string<void>("p = Person:new('loh', 'bolotniy')\np:simpleCall()");
+    BOOST_TEST(check);
+    BOOST_TEST(!checkAnimal);
+    v.do_string<void>("a = Animal:new('azaza')\na:check()");
+    BOOST_TEST(checkAnimal);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

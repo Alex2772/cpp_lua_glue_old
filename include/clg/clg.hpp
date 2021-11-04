@@ -192,13 +192,6 @@ namespace clg {
         lua_function operator[](const std::string& v) {
             return {v, *this};
         }
-
-        void stacktrace() {
-            int t = lua_gettop(mState);
-            for (int i = 0; i <= t; ++i) {
-                std::cout << "[" << i << "] " << any_to_string(mState, i) << std::endl;
-            }
-        }
     };
 
     /**
