@@ -127,7 +127,6 @@ namespace clg {
         }
     };
 
-
     /**
      * userdata
      */
@@ -137,7 +136,8 @@ namespace clg {
             if (lua_isuserdata(l, n)) {
                 return *reinterpret_cast<T**>(lua_touserdata(l, n));
             }
-            detail::throw_converter_error(l, n, "not a userdata nor table");
+            detail::throw_converter_error(l, n, "not a userdata");
+            return nullptr;
         }
         static int to_lua(lua_State* l, T* v) {
             auto classname = clg::class_name<T>();
@@ -162,7 +162,7 @@ namespace clg {
 
     template<typename T>
     static T get_from_lua(lua_State* l, unsigned index) {
-        return converter<T>::from_lua(l, index);;
+        return converter<T>::from_lua(l, index);
     }
 
     /**

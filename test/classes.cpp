@@ -44,6 +44,12 @@ public:
         BOOST_CHECK_EQUAL(b, 322);
         return 123;
     }
+
+    static int doXor(int a, int b) {
+        BOOST_CHECK_EQUAL(a, 1);
+        BOOST_CHECK_EQUAL(b, 2);
+        return a ^ b;
+    }
 };
 
 
@@ -175,4 +181,16 @@ BOOST_AUTO_TEST_CASE(multiple_clases) {
     BOOST_TEST(checkAnimal);
 }
 
+
+
+BOOST_AUTO_TEST_CASE(staticMethod) {
+    constructorCalled = false;
+    check = false;
+    clg::vm v;
+    v.register_class<Person>()
+            .staticFunction<Person::doXor>("doXor");
+
+    int result = v.do_string<int>("return Person:doXor(1, 2)");
+    BOOST_CHECK_EQUAL(result, (1 ^ 2));
+}
 BOOST_AUTO_TEST_SUITE_END()

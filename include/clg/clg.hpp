@@ -87,7 +87,7 @@ namespace clg {
         };
 
         template<typename Return, typename... Args>
-        register_function_helper<Return, Args...> make_register_function_helper(Return(*)(Args...)) {
+        static register_function_helper<Return, Args...> make_register_function_helper(Return(*)(Args...)) {
             return {};
         }
 
@@ -108,6 +108,12 @@ namespace clg {
         template<typename Class, typename R, typename... Args>
         struct callable_class_info<R(Class::*)(Args...)> {
             using class_t = Class;
+            using args = types<Args...>;
+            using return_t = R;
+        };
+
+        template<typename R, typename... Args>
+        struct callable_class_info<R(*)(Args...)> {
             using args = types<Args...>;
             using return_t = R;
         };
@@ -211,3 +217,4 @@ namespace clg {
 }
 
 #include "class_registrar.hpp"
+#include "table.hpp"
