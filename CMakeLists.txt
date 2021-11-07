@@ -51,8 +51,8 @@ if(NOT TARGET lua)
                 "${LUA_SOURCE_DIR_PATH}/linit.c")
         target_include_directories(lua PUBLIC lua/)
     endif()
-    target_link_libraries(cpp_lua_glue INTERFACE lua)
 endif()
+target_link_libraries(cpp_lua_glue INTERFACE lua)
 
 if(ENABLE_TESTS)
     # test

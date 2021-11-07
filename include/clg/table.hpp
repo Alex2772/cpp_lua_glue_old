@@ -6,6 +6,8 @@
 
 #include "value.hpp"
 #include "converter.hpp"
+#include <map>
+#include <string>
 
 namespace clg {
     class table: public std::map<std::string, clg::value> {
