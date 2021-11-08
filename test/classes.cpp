@@ -181,6 +181,57 @@ BOOST_AUTO_TEST_CASE(multiple_clases) {
     BOOST_TEST(checkAnimal);
 }
 
+BOOST_AUTO_TEST_CASE(same_object) {
+    {
+        check = false;
+        checkAnimal = false;
+        destructorCalled = false;
+
+        clg::vm v;
+
+        class SomeClass {
+        private:
+            int mValue;
+
+        public:
+            SomeClass(int value) : mValue(value) {}
+
+            ~SomeClass() {
+                static bool destructorCalled = false;
+                BOOST_TEST(!destructorCalled);
+                destructorCalled = true;
+                classes::destructorCalled = true;
+            }
+
+            int getValue() {
+                return mValue;
+            }
+
+            static SomeClass* get() {
+                static auto s = new SomeClass(228);
+                return s;
+            }
+        };
+
+        v.register_class<SomeClass>()
+                .staticFunction<&SomeClass::get>("get")
+                .method<&SomeClass::getValue>("getValue");
+
+        BOOST_TEST(v.do_string<bool>(R"(
+v1 = SomeClass:get()
+v2 = SomeClass:get()
+return v1:getValue() == v2:getValue();
+)"));
+
+        BOOST_TEST(v.do_string<bool>(R"(
+v1 = SomeClass:get()
+v2 = SomeClass:get()
+return v1 == v2;
+)"));
+    }
+    BOOST_TEST(destructorCalled);
+}
+
 
 
 BOOST_AUTO_TEST_CASE(staticMethod) {

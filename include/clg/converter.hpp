@@ -7,6 +7,7 @@
 #include "lua.hpp"
 #include "exception.hpp"
 #include "util.hpp"
+#include "ref.hpp"
 #include <tuple>
 
 namespace clg {
@@ -134,15 +135,17 @@ namespace clg {
     struct converter<T*> {
         static T* from_lua(lua_State* l, int n) {
             if (lua_isuserdata(l, n)) {
-                return *reinterpret_cast<T**>(lua_touserdata(l, n));
+                return reinterpret_cast<T*>((*reinterpret_cast<clg::ref::info**>(lua_touserdata(l, n)))->ref);
             }
             detail::throw_converter_error(l, n, "not a userdata");
             return nullptr;
         }
         static int to_lua(lua_State* l, T* v) {
             auto classname = clg::class_name<T>();
-            T** t = reinterpret_cast<T**>(lua_newuserdata(l, sizeof(T*)));
-            *t = v;
+            auto info = clg::ref::wrap(v);
+
+            auto t = reinterpret_cast<clg::ref::info**>(lua_newuserdata(l, sizeof(void*)));
+            *t = info;
             luaL_getmetatable(l, classname.c_str());
             if (lua_isnil(l, -1)) {
                 lua_pop(l, 1);

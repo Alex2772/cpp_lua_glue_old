@@ -9,6 +9,7 @@
 #include "dynamic_result.hpp"
 #include "lua_function.hpp"
 #include "util.hpp"
+#include "ref.hpp"
 
 #include <cstring>
 

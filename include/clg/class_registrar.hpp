@@ -81,7 +81,7 @@ namespace clg {
 
         static int gc(lua_State* l) {
             if (lua_isuserdata(l, 1)) {
-                delete* reinterpret_cast<C**>(lua_touserdata(l, 1));
+                clg::ref::dec<C>(*static_cast<ref::info**>(lua_touserdata(l, 1)));
             }
             return 0;
         }
