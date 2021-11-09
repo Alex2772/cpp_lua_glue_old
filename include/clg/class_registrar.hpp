@@ -85,6 +85,12 @@ namespace clg {
             }
             return 0;
         }
+        static int eq(lua_State* l) {
+            auto v1 = converter<C*>::from_lua(l, 1);
+            auto v2 = converter<C*>::from_lua(l, 2);
+            push_to_lua(l, v1 == v2);
+            return 1;
+        }
 
     public:
         ~class_registrar() {
@@ -116,6 +122,7 @@ namespace clg {
             int metatableId = lua_gettop(mClg);
             luaL_Reg metatableFunctions[] = {
                     { "__gc", gc },
+                    { "__eq", eq },
                     { nullptr },
             };
             luaL_setfuncs(mClg, metatableFunctions, 0);

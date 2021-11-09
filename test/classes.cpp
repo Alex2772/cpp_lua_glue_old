@@ -197,9 +197,6 @@ BOOST_AUTO_TEST_CASE(same_object) {
             SomeClass(int value) : mValue(value) {}
 
             ~SomeClass() {
-                static bool destructorCalled = false;
-                BOOST_TEST(!destructorCalled);
-                destructorCalled = true;
                 classes::destructorCalled = true;
             }
 
@@ -207,27 +204,46 @@ BOOST_AUTO_TEST_CASE(same_object) {
                 return mValue;
             }
 
-            static SomeClass* get() {
+            static SomeClass* get228() {
                 static auto s = new SomeClass(228);
+                return s;
+            }
+            static SomeClass* get322() {
+                static auto s = new SomeClass(322);
                 return s;
             }
         };
 
         v.register_class<SomeClass>()
-                .staticFunction<&SomeClass::get>("get")
+                .staticFunction<&SomeClass::get228>("get228")
+                .staticFunction<&SomeClass::get322>("get322")
                 .method<&SomeClass::getValue>("getValue");
 
-        BOOST_TEST(v.do_string<bool>(R"(
-v1 = SomeClass:get()
-v2 = SomeClass:get()
-return v1:getValue() == v2:getValue();
-)"));
-
-        BOOST_TEST(v.do_string<bool>(R"(
-v1 = SomeClass:get()
-v2 = SomeClass:get()
+        {
+            bool result = v.do_string<bool>(R"(
+v1 = SomeClass:get228()
+v2 = SomeClass:get228()
 return v1 == v2;
-)"));
+)");
+            BOOST_TEST(result);
+        }
+        {
+            bool result = v.do_string<bool>(R"(
+v1 = SomeClass:get228()
+v2 = SomeClass:get228()
+return v1:getValue() == v2:getValue();
+)");
+            BOOST_TEST(result);
+        }
+
+        {
+            bool result = v.do_string<bool>(R"(
+v1 = SomeClass:get228()
+v2 = SomeClass:get322()
+return v1 ~= v2
+)");
+            BOOST_TEST(result);
+        }
     }
     BOOST_TEST(destructorCalled);
 }
