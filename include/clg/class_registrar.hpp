@@ -7,6 +7,7 @@
 #include "clg.hpp"
 #include <vector>
 #include <cassert>
+#include <cstdio>
 
 namespace clg {
     template<class C>
@@ -86,10 +87,28 @@ namespace clg {
             return 0;
         }
         static int eq(lua_State* l) {
-            auto v1 = converter<C*>::from_lua(l, 1);
-            auto v2 = converter<C*>::from_lua(l, 2);
+            auto v1 = get_from_lua<C*>(l, 1);
+            auto v2 = get_from_lua<C*>(l, 2);
             push_to_lua(l, v1 == v2);
             return 1;
+        }
+        static int concat(lua_State* l) {
+            auto v1 = get_from_lua<std::string>(l, 1);
+            auto v2 = get_from_lua<C*>(l, 2);
+            v1 += toString(v2);
+            push_to_lua(l, v1);
+            return 1;
+        }
+        static int tostring(lua_State* l) {
+            auto v1 = get_from_lua<C*>(l, 1);
+            push_to_lua(l, toString(v1));
+            return 1;
+        }
+
+        static std::string toString(C* v) {
+            char buf[64];
+            std::sprintf(buf, "%s<%p>", class_name<C>().c_str(), v);
+            return buf;
         }
 
     public:
@@ -123,6 +142,8 @@ namespace clg {
             luaL_Reg metatableFunctions[] = {
                     { "__gc", gc },
                     { "__eq", eq },
+                    { "__concat", concat },
+                    { "__tostring", tostring },
                     { nullptr },
             };
             luaL_setfuncs(mClg, metatableFunctions, 0);

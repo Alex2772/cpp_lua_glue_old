@@ -169,6 +169,18 @@ BOOST_AUTO_TEST_CASE(multiple_clases) {
 
     v.do_string<void>("p = Person:new('loh', 'bolotniy')\np:simpleCall()");
     BOOST_TEST(check);
+
+        {
+            bool result = v.do_string<bool>(R"(
+p1 = Person:new('loh', 'bolotniy')
+p2 = Person:new('loh', 'bolotniy')
+print("p1: "..p1)
+print("p2: "..p2)
+return p1 == p2
+)");
+            BOOST_TEST(!result);
+        }
+
     check = false;
     v.do_string<void>("a = Animal:new('azaza')\na:check()");
     BOOST_TEST(checkAnimal);
@@ -223,6 +235,8 @@ BOOST_AUTO_TEST_CASE(same_object) {
             bool result = v.do_string<bool>(R"(
 v1 = SomeClass:get228()
 v2 = SomeClass:get228()
+print("v1: "..v1)
+print("v2: "..v2)
 return v1 == v2;
 )");
             BOOST_TEST(result);
@@ -236,6 +250,14 @@ return v1:getValue() == v2:getValue();
             BOOST_TEST(result);
         }
 
+        {
+            bool result = v.do_string<bool>(R"(
+v1 = SomeClass:get228()
+v2 = SomeClass:get228()
+return v1 ~= v2
+)");
+            BOOST_TEST(!result);
+        }
         {
             bool result = v.do_string<bool>(R"(
 v1 = SomeClass:get228()
