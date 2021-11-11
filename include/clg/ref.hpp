@@ -34,9 +34,9 @@ namespace clg {
         static void dec(info* i) {
             i->count -= 1;
             if (i->count == 0) {
-                delete reinterpret_cast<T*>(i->ref);
-                auto it = map().find(i->ref);
-                map().erase(it);
+                auto v = i->ref;
+                map().erase(i->ref);
+                delete reinterpret_cast<T*>(v);
             }
         }
     };
