@@ -38,16 +38,24 @@ namespace clg {
         void push() {}
 
         void push_function_to_be_called() {
-            try {
+            if (std::holds_alternative<std::string>(mName)) {
                 lua_getglobal(mClg, std::get<std::string>(mName).c_str());
-            } catch (...) {
+                if (lua_isnil(mClg, -1)) {
+                    lua_pop(mClg, 1);
+                    throw lua_exception("function " + std::get<std::string>(mName) + " is not defined");
+                }
+            } else {
                 lua_topointer(mClg, 1);
             }
         }
 
         void do_call(unsigned args, int results) {
             if (lua_pcall(mClg, args, results, 0)) {
-                throw lua_exception(get_from_lua<std::string>(mClg));
+                try {
+                    throw lua_exception("failed to call " + std::get<std::string>(mName) + ": " + get_from_lua<std::string>(mClg));
+                } catch (...) {
+                    throw lua_exception(get_from_lua<std::string>(mClg));
+                }
             }
         }
 
