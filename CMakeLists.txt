@@ -55,17 +55,5 @@ endif()
 target_link_libraries(cpp_lua_glue INTERFACE lua)
 
 if(ENABLE_TESTS)
-    # test
-    find_package(Boost 1.66.0 COMPONENTS system thread unit_test_framework REQUIRED)
-    file(GLOB_RECURSE TEST_SRCS test/*.cpp)
-
-    add_definitions(-DBOOST_ALL_NO_LIB)
-    add_executable(cpp_lua_glue_test ${TEST_SRCS})
-    target_include_directories(cpp_lua_glue_test PRIVATE ${Boost_INCLUDE_DIRS})
-    target_link_directories(cpp_lua_glue_test PRIVATE ${Boost_LIBRARY_DIRS})
-    target_link_libraries(cpp_lua_glue_test PUBLIC ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
-
-    target_link_libraries(cpp_lua_glue_test PUBLIC cpp_lua_glue)
-    enable_testing()
-    add_test(cpp_lua_glue cpp_lua_glue_test)
+    add_subdirectory(test)
 endif()
