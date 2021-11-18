@@ -55,5 +55,6 @@ endif()
 target_link_libraries(cpp_lua_glue INTERFACE lua)
 
 if(ENABLE_TESTS)
+    enable_testing()
     add_subdirectory(test)
 endif()

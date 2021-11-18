@@ -13,6 +13,4 @@ target_link_libraries(cpp_lua_glue_test
         Boost::unit_test_framework
 )
 
-enable_testing()
-
 add_test(cpp_lua_glue cpp_lua_glue_test)
