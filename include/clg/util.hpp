@@ -8,6 +8,8 @@
 #include <cxxabi.h>
 #endif
 
+#include <algorithm>
+
 namespace clg {
     template<class T>
     std::string class_name() {
