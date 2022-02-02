@@ -9,6 +9,8 @@
 #endif
 
 #include <algorithm>
+#include <cctype>
+#include <string>
 
 namespace clg {
     template<class T>
@@ -22,7 +24,7 @@ namespace clg {
 #endif
 
         auto it = std::find_if(s.rbegin(),  s.rend(), [](char c) {
-            return !isalnum(c);
+            return !std::isalnum(c);
         });
 
         return {it.base(), s.end()};
