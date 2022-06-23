@@ -26,9 +26,11 @@ namespace clg {
     struct converter {
         static T from_lua(lua_State* l, int n) {
             if constexpr (std::is_integral_v<T> || std::is_floating_point_v<T>) {
+#ifdef lua_isinteger
                 if (lua_isinteger(l, n)) {
                     return static_cast<T>(lua_tointeger(l, n));
                 }
+#endif
                 if (lua_isboolean(l, n)) {
                     return static_cast<T>(lua_toboolean(l, n));
                 }

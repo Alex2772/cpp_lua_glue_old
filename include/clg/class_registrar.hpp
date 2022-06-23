@@ -10,6 +10,20 @@
 #include <cstdio>
 
 namespace clg {
+    namespace impl {
+#if LUA_VERSION_NUM == 501
+        static void newlib(lua_State* L, std::vector<luaL_Reg>& l) {
+            lua_createtable(L, 0, l.size() - 1);
+            luaL_setfuncs(L, l.data(), 0);
+        }
+#else
+    static void newlib(lua_State* L, std::vector<luaL_Reg>& l) {
+        luaL_newlib(L, l.data());
+    }
+#endif
+    }
+
+
     template<class C>
     class class_registrar {
     friend class clg::state_interface;
@@ -133,7 +147,7 @@ namespace clg {
             auto classname = clg::class_name<C>();
 
             // clazz = staticFunctions
-            luaL_newlib(mClg, staticFunctions.data());
+            impl::newlib(mClg, staticFunctions);
             int clazzId = lua_gettop(mClg);
 
             // metatable = { __gc = ... }
@@ -149,7 +163,7 @@ namespace clg {
             luaL_setfuncs(mClg, metatableFunctions, 0);
 
             // metatable.__index = methods
-            luaL_newlib(mClg, methods.data());
+            impl::newlib(mClg, methods);
             lua_setfield(mClg, metatableId, "__index");
 
             // setmetatable(clazz, metatable)

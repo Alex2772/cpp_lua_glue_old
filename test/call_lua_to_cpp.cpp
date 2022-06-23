@@ -123,11 +123,12 @@ void func_exception() {
 BOOST_AUTO_TEST_CASE(call_exception) {
     clg::vm v;
     v.register_function<func_exception>("call");
-    BOOST_CHECK_THROW(v.do_string<void>("call()"), clg::lua_exception);
     try {
         v.do_string<void>("call()");
-    } catch (const std::exception& e) {
-        std::cout << "exception: " << e.what() << std::endl;
+        BOOST_FAIL("do_string has not thrown an exception");
+    } catch (...) {
+        auto e =std::current_exception();
+        std::rethrow_exception(e);
     }
 }
 

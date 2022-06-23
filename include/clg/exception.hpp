@@ -11,9 +11,11 @@ namespace clg {
     class clg_exception : public std::runtime_error {
     public:
         using std::runtime_error::runtime_error;
+        ~clg_exception() override = default;
     };
     class lua_exception: public clg_exception {
     public:
         using clg_exception::clg_exception;
+        ~lua_exception() override = default;
     };
 }
