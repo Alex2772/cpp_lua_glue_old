@@ -1,43 +1,72 @@
-//
-// Created by Alex2772 on 11/8/2021.
-//
-
 #pragma once
 
-#include <map>
+#include <lua.hpp>
+#include "converter.hpp"
+#include <cassert>
+#include <algorithm>
 
 namespace clg {
-    struct ref {
-        struct info {
-            void* ref;
-            size_t count = 0;
-        };
-
-        static std::map<void*, info>& map() {
-            static std::map<void*, info> m;
-            return m;
+    class ref {
+    public:
+        ref() = default;
+        ref(const ref& other) noexcept: mLua(other.mLua), mPtr([&] {
+            other.push_value_to_stack();
+            return luaL_ref(other.mLua, LUA_REGISTRYINDEX);
+        }()) {}
+        ref(ref&& other) noexcept: mLua(other.mLua), mPtr(other.mPtr) {
+            other.mLua = nullptr;
+            other.mPtr = -1;
         }
 
-        template<class T>
-        static info* wrap(T* ref) {
-            auto it = map().find(ref);
-            if (it != map().end()) {
-                it->second.count += 1;
-                return &it->second;
-            }
-            auto& i = map()[ref];
-            i = { ref, 1 };
-            return &i;
+        ref& operator=(ref&& other) noexcept {
+            mLua = other.mLua;
+            mPtr = other.mPtr;
+            other.mLua = nullptr;
+            other.mPtr = -1;
+            return *this;
         }
 
-        template<class T>
-        static void dec(info* i) {
-            i->count -= 1;
-            if (i->count == 0) {
-                auto v = i->ref;
-                map().erase(i->ref);
-                delete reinterpret_cast<T*>(v);
+        ~ref() {
+            if (mPtr != -1) {
+                luaL_unref(mLua, LUA_REGISTRYINDEX, mPtr);
             }
+        }
+
+
+        ref& operator=(std::nullptr_t) noexcept {
+            if (mPtr != -1) {
+                luaL_unref(mLua, LUA_REGISTRYINDEX, mPtr);
+                mPtr = -1;
+            }
+            return *this;
+        }
+
+        static ref from_stack(lua_State* state) noexcept {
+            return { state };
+        }
+
+        void push_value_to_stack() const noexcept {
+            assert(mLua != nullptr);
+            assert(mPtr != -1);
+            lua_rawgeti(mLua, LUA_REGISTRYINDEX, mPtr);
+        }
+
+    private:
+        lua_State* mLua = nullptr;
+        int mPtr = -1;
+
+        ref(lua_State* state) noexcept: mLua(state), mPtr(luaL_ref(state, LUA_REGISTRYINDEX)) {}
+    };
+
+    template<>
+    struct converter<clg::ref> {
+        static ref from_lua(lua_State* l, int n) {
+            lua_pushvalue(l, n);
+            return clg::ref::from_stack(l);
+        }
+        static int to_lua(lua_State* l, const clg::ref& ref) {
+            ref.push_value_to_stack();
+            return 1;
         }
     };
 }

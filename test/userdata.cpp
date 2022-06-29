@@ -21,7 +21,7 @@ BOOST_AUTO_TEST_CASE(check1) {
     clg::vm v;
     v.do_string<void>("function govno(a) return a end");
 
-    auto returned = v["govno"].call<user*>(&u);
+    auto returned = v.global_function("govno").call<user*>(&u);
     BOOST_CHECK_EQUAL(returned, &u);
 }
 
@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(check2) {
     v.register_function<get_id>("get_id");
     v.do_string<void>("function govno(a) return 'id:'..get_id(a) end");
 
-    auto returned = v["govno"].call<std::string>(&u);
+    auto returned = v.global_function("govno").call<std::string>(&u);
     BOOST_CHECK_EQUAL(returned, "id:228");
 }
 

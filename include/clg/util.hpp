@@ -29,4 +29,23 @@ namespace clg {
 
         return {it.base(), s.end()};
     }
+
+
+    /**
+     * @brief проверяет, что стек луа не поменялся в скоупе RAII
+     */
+    struct stack_integrity {
+    public:
+        stack_integrity(lua_State* lua): mLua(lua) {
+            mStack = lua_gettop(mLua);
+        }
+
+        ~stack_integrity() {
+            assert(lua_gettop(mLua) == mStack);
+        }
+
+    private:
+        lua_State* mLua;
+        int mStack;
+    };
 }

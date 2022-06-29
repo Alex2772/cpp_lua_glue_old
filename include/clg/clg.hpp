@@ -9,7 +9,7 @@
 #include "dynamic_result.hpp"
 #include "lua_function.hpp"
 #include "util.hpp"
-#include "ref.hpp"
+#include "intrusive_ptr.hpp"
 
 #include <cstring>
 
@@ -73,11 +73,11 @@ namespace clg {
                         lua_pop(s, sizeof...(Args));
                         if constexpr (std::is_same_v<void, Return>) {
                             // ничего не возвращается
-                            (std::apply)(f, argsTuple);
+                            (std::apply)(f, std::move(argsTuple));
                             return 0;
                         } else {
                             // возвращаем одно значение
-                            return clg::push_to_lua(s, (std::apply)(f, argsTuple));
+                            return clg::push_to_lua(s, (std::apply)(f, std::move(argsTuple)));
                         }
                     } catch (const std::exception& e) {
                         luaL_error(s, "cpp exception: %s", e.what());
@@ -196,8 +196,9 @@ namespace clg {
          * @param v название функции для вызова
          * @return обёртка для передачи аргументов в функцию
          */
-        lua_function operator[](const std::string& v) {
-            return {v, *this};
+        lua_function global_function(std::string_view v) {
+            lua_getglobal(mState, v.data());
+            return {clg::ref::from_stack(*this), *this};
         }
     };
 
@@ -219,3 +220,4 @@ namespace clg {
 
 #include "class_registrar.hpp"
 #include "table.hpp"
+#include "ref.hpp"

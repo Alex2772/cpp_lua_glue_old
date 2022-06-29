@@ -48,7 +48,7 @@ namespace clg {
     template<>
     struct converter<dynamic_result> {
         static dynamic_result from_lua(lua_State* l, int n) {
-            return dynamic_result(l);
+            return {l};
         }
     };
 
