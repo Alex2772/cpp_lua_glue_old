@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cctype>
 #include <string>
+#include <cassert>
 
 namespace clg {
     template<class T>

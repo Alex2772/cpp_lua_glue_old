@@ -6,6 +6,7 @@
 
 #include "converter.hpp"
 #include "ref.hpp"
+#include <vector>
 
 namespace clg {
 
@@ -50,7 +51,10 @@ namespace clg {
         }
 
         [[nodiscard]] bool is_nil(int index) const {
-            return lua_isnil(mState, index + 1);
+            push_value_to_stack(index);
+            bool b = lua_isnil(mState, -1);
+            lua_pop(mState, 1);
+            return b;
         }
 
         [[nodiscard]] size_t size() const {

@@ -47,7 +47,6 @@ namespace clg {
 
         void push_value_to_stack() const noexcept {
             assert(mLua != nullptr);
-            assert(mPtr != -1);
             lua_rawgeti(mLua, LUA_REGISTRYINDEX, mPtr);
         }
 

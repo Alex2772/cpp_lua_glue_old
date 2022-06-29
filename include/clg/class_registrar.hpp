@@ -89,6 +89,7 @@ namespace clg {
                     }
                 }
                 using my_instance = typename state_interface::register_function_helper<typename class_info::return_t, void*, Args...>::template instance<call>;
+                using my_instance_static = typename state_interface::register_function_helper<typename class_info::return_t, Args...>::template instance<call_static>;
             };
 
             using wrapper_function_helper = wrapper_function_helper_t<typename class_info::args>;
