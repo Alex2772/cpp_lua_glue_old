@@ -210,8 +210,11 @@ namespace clg {
         class_registrar<C>& staticFunction(const std::string& name) {
             using wrapper_function_helper = typename static_function_helper<m>::wrapper_function_helper;
 
+#if LUA_VERSION_NUM == 501
+            constexpr auto call = wrapper_function_helper::my_instance_static::call;
+#else
             constexpr auto call = wrapper_function_helper::my_instance::call;
-
+#endif
             mStaticFunctions.push_back({
                name,
                call

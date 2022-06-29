@@ -233,8 +233,8 @@ BOOST_AUTO_TEST_CASE(same_object) {
 
         {
             bool result = v.do_string<bool>(R"(
-v1 = SomeClass:get228()
-v2 = SomeClass:get228()
+v1 = SomeClass.get228()
+v2 = SomeClass.get228()
 print("v1: "..v1)
 print("v2: "..v2)
 return v1 == v2;
@@ -243,8 +243,8 @@ return v1 == v2;
         }
         {
             bool result = v.do_string<bool>(R"(
-v1 = SomeClass:get228()
-v2 = SomeClass:get228()
+v1 = SomeClass.get228()
+v2 = SomeClass.get228()
 return v1:getValue() == v2:getValue();
 )");
             BOOST_TEST(result);
@@ -252,16 +252,16 @@ return v1:getValue() == v2:getValue();
 
         {
             bool result = v.do_string<bool>(R"(
-v1 = SomeClass:get228()
-v2 = SomeClass:get228()
+v1 = SomeClass.get228()
+v2 = SomeClass.get228()
 return v1 ~= v2
 )");
             BOOST_TEST(!result);
         }
         {
             bool result = v.do_string<bool>(R"(
-v1 = SomeClass:get228()
-v2 = SomeClass:get322()
+v1 = SomeClass.get228()
+v2 = SomeClass.get322()
 return v1 ~= v2
 )");
             BOOST_TEST(result);
@@ -279,7 +279,7 @@ BOOST_AUTO_TEST_CASE(staticMethod) {
     v.register_class<Person>()
             .staticFunction<Person::doXor>("doXor");
 
-    int result = v.do_string<int>("return Person:doXor(1, 2)");
+    int result = v.do_string<int>("return Person.doXor(1, 2)");
     BOOST_CHECK_EQUAL(result, (1 ^ 2));
 }
 BOOST_AUTO_TEST_SUITE_END()
