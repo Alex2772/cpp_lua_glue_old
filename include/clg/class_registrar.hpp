@@ -89,7 +89,6 @@ namespace clg {
                     }
                 }
                 using my_instance = typename state_interface::register_function_helper<typename class_info::return_t, void*, Args...>::template instance<call>;
-                using my_instance_static = typename state_interface::register_function_helper<typename class_info::return_t, Args...>::template instance<call_static>;
             };
 
             using wrapper_function_helper = wrapper_function_helper_t<typename class_info::args>;
@@ -210,11 +209,8 @@ namespace clg {
         class_registrar<C>& staticFunction(const std::string& name) {
             using wrapper_function_helper = typename static_function_helper<m>::wrapper_function_helper;
 
-#if LUA_VERSION_NUM == 501
-            constexpr auto call = wrapper_function_helper::my_instance_static::call;
-#else
             constexpr auto call = wrapper_function_helper::my_instance::call;
-#endif
+
             mStaticFunctions.push_back({
                name,
                call

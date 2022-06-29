@@ -11,7 +11,8 @@ BOOST_AUTO_TEST_SUITE(callback)
 
         clg::lua_function callback;
 
-        v.register_function("register_callback", [&](clg::lua_function function) {
+        v.register_function("register_callback", [&](int two, clg::lua_function function) {
+            BOOST_CHECK_EQUAL(two, 2);
             callback = std::move(function);
         });
         v.register_function("call_callback", [&] {
@@ -19,12 +20,12 @@ BOOST_AUTO_TEST_SUITE(callback)
         });
 
         auto result = v.do_string<int>(R"(
-register_callback(function(a, b)
-  return a * b
+register_callback(2, function(a, b)
+  return a - b
 end)
 return call_callback() - 1
 )");
-        BOOST_CHECK_EQUAL(result, 23);
+        BOOST_CHECK_EQUAL(result, 4);
     }
 
 BOOST_AUTO_TEST_SUITE_END()

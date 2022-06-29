@@ -94,8 +94,7 @@ namespace clg {
     template<>
     struct converter<clg::lua_function> {
         static clg::lua_function from_lua(lua_State* l, int n) {
-            lua_pushvalue(l, n);
-            return { l, clg::ref::from_stack(l) };
+            return { l, get_from_lua<ref>(l, n) };
         }
         static int to_lua(lua_State* l, const clg::ref& ref) {
             ref.push_value_to_stack();

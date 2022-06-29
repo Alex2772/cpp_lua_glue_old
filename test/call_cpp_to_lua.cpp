@@ -20,9 +20,9 @@ BOOST_AUTO_TEST_CASE(call_return_one_arg) {
 
 BOOST_AUTO_TEST_CASE(call_return_multiple_args) {
     clg::vm v;
-    v.do_string<void>("function sum_plus_3(a, b) return a + b + 3 end");
-    int x = v.global_function("sum_plus_3").call<int>(228, 322);
-    BOOST_CHECK_EQUAL(x, 553);
+    v.do_string<void>("function sub_plus_3(a, b) return a - b + 3 end");
+    int x = v.global_function("sub_plus_3").call<int>(228, 322);
+    BOOST_CHECK_EQUAL(x, -91);
 }
 BOOST_AUTO_TEST_CASE(call_mutiple_return_multiple_args) {
     clg::vm v;
