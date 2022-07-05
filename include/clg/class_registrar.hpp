@@ -45,22 +45,27 @@ namespace clg {
         std::vector<Method> mStaticFunctions;
         std::vector<lua_CFunction> mConstructors;
 
-        template<auto method>
+        template<auto methodPtr>
         struct method_helper {
-            using class_info = state_interface::callable_class_info<decltype(method)>;
+            using class_info = state_interface::callable_class_info<decltype(methodPtr)>;
 
             template<typename... Args>
             struct wrapper_function_helper_t {};
             template<typename... Args>
             struct wrapper_function_helper_t<state_interface::types<Args...>> {
-                static typename class_info::return_t call(std::shared_ptr<C> self, Args... args) {
+                static typename class_info::return_t method(std::shared_ptr<C> self, Args... args) {
                     if (std::is_same_v<void, typename class_info::return_t>) {
-                        (self.get()->*method)(args...);
+                        (self.get()->*methodPtr)(args...);
                     } else {
-                        return (self.get()->*method)(args...);
+                        return (self.get()->*methodPtr)(args...);
                     }
                 }
-                using my_instance = typename state_interface::register_function_helper<typename class_info::return_t, std::shared_ptr<C>, Args...>::template instance<call>;
+                static std::shared_ptr<C> builder_method(std::shared_ptr<C> self, Args... args) {
+                    (self.get()->*methodPtr)(args...);
+                    return self;
+                }
+                using my_instance = typename state_interface::register_function_helper<typename class_info::return_t, std::shared_ptr<C>, Args...>::template instance<method>;
+                using my_instance_builder = typename state_interface::register_function_helper<std::shared_ptr<C>, std::shared_ptr<C>, Args...>::template instance<builder_method>;
             };
 
             using wrapper_function_helper = wrapper_function_helper_t<typename class_info::args>;
@@ -74,22 +79,22 @@ namespace clg {
             struct wrapper_function_helper_t {};
             template<typename... Args>
             struct wrapper_function_helper_t<state_interface::types<Args...>> {
-                static typename class_info::return_t call(void* self, Args... args) {
+                static typename class_info::return_t static_method(void* self, Args... args) {
                     if (std::is_same_v<void, typename class_info::return_t>) {
                         method(args...);
                     } else {
                         return method(args...);
                     }
                 }
-                static typename class_info::return_t call_static(Args... args) {
+                static typename class_info::return_t static_method_no_this(Args... args) {
                     if (std::is_same_v<void, typename class_info::return_t>) {
                         method(args...);
                     } else {
                         return method(args...);
                     }
                 }
-                using my_instance = typename state_interface::register_function_helper<typename class_info::return_t, void*, Args...>::template instance<call>;
-                using my_instance_static = typename state_interface::register_function_helper<typename class_info::return_t, Args...>::template instance<call_static>;
+                using my_instance = typename state_interface::register_function_helper<typename class_info::return_t, void*, Args...>::template instance<static_method>;
+                using my_instance_no_this = typename state_interface::register_function_helper<typename class_info::return_t, Args...>::template instance<static_method_no_this>;
             };
 
             using wrapper_function_helper = wrapper_function_helper_t<typename class_info::args>;
@@ -196,27 +201,38 @@ namespace clg {
         }
 
         template<auto m>
-        class_registrar<C>& method(const std::string& name) {
+        class_registrar<C>& method(std::string name) {
             using wrapper_function_helper = typename method_helper<m>::wrapper_function_helper;
             using my_instance = typename wrapper_function_helper::my_instance;
             mMethods.push_back({
-               name,
+               std::move(name),
                my_instance::call
             });
             return *this;
         }
 
         template<auto m>
-        class_registrar<C>& staticFunction(const std::string& name) {
+        class_registrar<C>& builder_method(std::string name) {
+            using wrapper_function_helper = typename method_helper<m>::wrapper_function_helper;
+            using my_instance = typename wrapper_function_helper::my_instance_builder;
+            mMethods.push_back({
+               std::move(name),
+               my_instance::call
+            });
+            return *this;
+        }
+
+        template<auto m>
+        class_registrar<C>& staticFunction(std::string name) {
             using wrapper_function_helper = typename static_function_helper<m>::wrapper_function_helper;
 
 #if LUA_VERSION_NUM == 501
-            constexpr auto call = wrapper_function_helper::my_instance_static::call;
+            constexpr auto call = wrapper_function_helper::my_instance_no_this::call;
 #else
             constexpr auto call = wrapper_function_helper::my_instance::call;
 #endif
             mStaticFunctions.push_back({
-               name,
+               std::move(name),
                call
             });
             return *this;

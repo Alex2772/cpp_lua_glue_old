@@ -193,6 +193,37 @@ return p1 == p2
     v.do_string<void>("a = Animal:new('azaza')\na:check()");
     BOOST_TEST(checkAnimal);
 }
+BOOST_AUTO_TEST_CASE(builder_methods) {
+
+    clg::vm v;
+
+    struct Object {
+    public:
+        void check1() {
+            BOOST_CHECK_EQUAL(mString, "hello");
+            mString = "world";
+        }
+        void check2() {
+            BOOST_CHECK_EQUAL(mString, "world");
+            mString = "!";
+        }
+
+        [[nodiscard]]
+        const std::string& string() const noexcept {
+            return mString;
+        }
+    private:
+        std::string mString = "hello";
+    };
+
+    v.register_class<Object>()
+            .constructor<>()
+            .builder_method<&Object::check1>("check1")
+            .builder_method<&Object::check2>("check2")
+                    ;
+    auto obj = v.do_string<std::shared_ptr<Object>>("return Object:new():check1():check2()");
+    BOOST_CHECK_EQUAL(obj->string(), "!");
+}
 
 BOOST_AUTO_TEST_CASE(same_object) {
     thread_local std::set<int> destroyedObjects;
