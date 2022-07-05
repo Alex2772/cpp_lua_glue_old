@@ -43,7 +43,7 @@ namespace clg {
 
         template<typename T>
         [[nodiscard]] T get(int index) const {
-            stack_integrity stack(mState);
+            stack_integrity_check stack(mState);
             push_value_to_stack(index);
             auto p = converter<std::decay_t<T>>::from_lua(mState, -1);
             lua_pop(mState, 1);

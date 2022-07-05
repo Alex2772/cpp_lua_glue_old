@@ -175,6 +175,20 @@ BOOST_AUTO_TEST_CASE(lambda_with_capture) {
     BOOST_CHECK_EQUAL(s, 228);
     BOOST_TEST(called);
 }
+BOOST_AUTO_TEST_CASE(vararg) {
+    clg::vm v;
+    called = false;
+    v.register_function("call", [&](clg::vararg args) {
+        called = true;
+        BOOST_CHECK_EQUAL(args.size(), 3);
+        BOOST_CHECK_EQUAL(args[0].as<int>(), 0);
+        BOOST_CHECK_EQUAL(args[1].as<int>(), 1);
+        BOOST_CHECK_EQUAL(args[2].as<std::string>(), "hello");
+    });
+    v.do_string("call(0, 1, 'hello')");
+
+    BOOST_TEST(called);
+}
 
 
 BOOST_AUTO_TEST_SUITE_END()

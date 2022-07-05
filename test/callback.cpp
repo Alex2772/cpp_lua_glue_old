@@ -9,9 +9,9 @@ BOOST_AUTO_TEST_SUITE(callback)
     BOOST_AUTO_TEST_CASE(check1) {
         clg::vm v;
 
-        clg::lua_function callback;
+        clg::function callback;
 
-        v.register_function("register_callback", [&](int two, clg::lua_function function) {
+        v.register_function("register_callback", [&](int two, clg::function function) {
             BOOST_CHECK_EQUAL(two, 2);
             callback = std::move(function);
         });

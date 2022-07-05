@@ -5,6 +5,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 
 namespace clg {
     struct shared_ptr_helper {

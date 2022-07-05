@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 #include "converter.hpp"
+#include "value.hpp"
 #include <cassert>
 #include <algorithm>
 
@@ -51,6 +52,19 @@ namespace clg {
         void push_value_to_stack() const noexcept {
             assert(mLua != nullptr);
             lua_rawgeti(mLua, LUA_REGISTRYINDEX, mPtr);
+        }
+
+        clg::value value() const noexcept {
+            return as<clg::value>();
+        }
+
+        template<typename T>
+        T as() const noexcept {
+            stack_integrity_check check(mLua);
+            push_value_to_stack();
+            auto v = clg::get_from_lua<T>(mLua, -1);
+            lua_pop(mLua, 1);
+            return v;
         }
 
     private:

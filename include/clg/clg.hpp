@@ -7,8 +7,9 @@
 #include "lua.hpp"
 #include "converter.hpp"
 #include "dynamic_result.hpp"
-#include "lua_function.hpp"
+#include "function.hpp"
 #include "util.hpp"
+#include "vararg.hpp"
 #include "shared_ptr_helper.hpp"
 
 #include <cstring>
@@ -57,20 +58,26 @@ namespace clg {
         struct register_function_helper {
             using function_t = Return(*)(Args...);
 
+            static constexpr bool is_vararg = std::is_same_v<std::tuple<Args...>, std::tuple<vararg>>;
+
             template<function_t f>
             struct instance {
                 static int call(lua_State* s) {
                     try {
                         size_t argsCount = lua_gettop(s);
-                        if (argsCount != sizeof...(Args)) {
-                            throw std::runtime_error("invalid argument count! expected "
-                                                     + std::to_string(sizeof...(Args))
-                                                     + ", actual " + std::to_string(argsCount));
+                        if constexpr (!is_vararg) {
+                            if (argsCount != sizeof...(Args)) {
+                                throw std::runtime_error("invalid argument count! expected "
+                                                         + std::to_string(sizeof...(Args))
+                                                         + ", actual " + std::to_string(argsCount));
+                            }
                         }
 
                         std::tuple<std::decay_t<Args>...> argsTuple;
                         tuple_fill_from_lua_helper<std::decay_t<Args>...>(s).template fill<0, std::decay_t<Args>...>(argsTuple);
+
                         lua_pop(s, sizeof...(Args));
+
                         if constexpr (std::is_same_v<void, Return>) {
                             // ничего не возвращается
                             (std::apply)(f, std::move(argsTuple));
@@ -196,7 +203,7 @@ namespace clg {
          * @param v название функции для вызова
          * @return обёртка для передачи аргументов в функцию
          */
-        lua_function global_function(std::string_view v) {
+        function global_function(std::string_view v) {
             lua_getglobal(mState, v.data());
             return {clg::ref::from_stack(*this), *this};
         }

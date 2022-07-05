@@ -35,13 +35,13 @@ namespace clg {
     /**
      * @brief проверяет, что стек луа не поменялся в скоупе RAII
      */
-    struct stack_integrity {
+    struct stack_integrity_check {
     public:
-        stack_integrity(lua_State* lua): mLua(lua) {
+        stack_integrity_check(lua_State* lua): mLua(lua) {
             mStack = lua_gettop(mLua);
         }
 
-        ~stack_integrity() {
+        ~stack_integrity_check() {
             assert(lua_gettop(mLua) == mStack);
         }
 

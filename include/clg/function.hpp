@@ -11,34 +11,34 @@
 #include "ref.hpp"
 
 namespace clg {
-    class lua_function {
+    class function {
         friend class state_interface;
         template<typename T>
         friend struct clg::converter;
 
 
     public:
-        lua_function(lua_State* lua, ref ref) : mLua(lua), mRef(std::move(ref)) {
+        function(lua_State* lua, ref ref) : mLua(lua), mRef(std::move(ref)) {
             push_function_to_be_called();
             assert(lua_isfunction(lua, -1));
             lua_pop(lua, 1);
         }
-        lua_function() = default;
-        lua_function(lua_function&& rhs) noexcept: mLua(rhs.mLua), mRef(std::move(rhs.mRef)) {}
-        lua_function(const lua_function& rhs): mLua(rhs.mLua), mRef(rhs.mRef) {}
+        function() = default;
+        function(function&& rhs) noexcept: mLua(rhs.mLua), mRef(std::move(rhs.mRef)) {}
+        function(const function& rhs): mLua(rhs.mLua), mRef(rhs.mRef) {}
 
-        lua_function& operator=(lua_function&& rhs) noexcept {
+        function& operator=(function&& rhs) noexcept {
             mLua = rhs.mLua;
             mRef = std::move(rhs.mRef);
             return *this;
         }
-        lua_function& operator=(std::nullptr_t rhs) noexcept {
+        function& operator=(std::nullptr_t rhs) noexcept {
             mRef = nullptr;
             return *this;
         }
 
         template<typename... Args>
-        void operator()(Args&& ... args) {
+        void operator()(Args&& ... args) const {
             push_function_to_be_called();
             push(std::forward<Args>(args)...);
             do_call(sizeof...(args), 0);
@@ -46,7 +46,7 @@ namespace clg {
 
         template<typename Return, typename... Args>
         Return call(Args&& ... args) {
-            stack_integrity stack(mLua);
+            stack_integrity_check stack(mLua);
             push_function_to_be_called();
             push(std::forward<Args>(args)...);
 
@@ -64,22 +64,22 @@ namespace clg {
         lua_State* mLua;
         clg::ref mRef;
 
-        lua_function(clg::ref name, lua_State* lua) : mRef(std::move(name)), mLua(lua) {}
+        function(clg::ref name, lua_State* lua) : mRef(std::move(name)), mLua(lua) {}
 
         template<typename Arg, typename... Args>
-        void push(Arg&& arg, Args&& ... args) {
+        void push(Arg&& arg, Args&& ... args) const {
             push_to_lua(mLua, std::forward<Arg>(arg));
 
             push(std::forward<Args>(args)...);
         }
 
-        void push() {}
+        void push() const noexcept {}
 
-        void push_function_to_be_called() {
+        void push_function_to_be_called() const noexcept {
             mRef.push_value_to_stack();
         }
 
-        void do_call(unsigned args, int results) {
+        void do_call(unsigned args, int results) const {
             if (lua_pcall(mLua, args, results, 0)) {
                 try {
                     auto name = any_to_string(mLua);
@@ -92,8 +92,8 @@ namespace clg {
     };
 
     template<>
-    struct converter<clg::lua_function> {
-        static clg::lua_function from_lua(lua_State* l, int n) {
+    struct converter<clg::function> {
+        static clg::function from_lua(lua_State* l, int n) {
             return { l, get_from_lua<ref>(l, n) };
         }
         static int to_lua(lua_State* l, const clg::ref& ref) {
