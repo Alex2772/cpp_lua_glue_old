@@ -7,7 +7,7 @@
 #include "lua.hpp"
 #include "exception.hpp"
 #include "util.hpp"
-#include "intrusive_ptr.hpp"
+#include "shared_ptr_helper.hpp"
 #include <tuple>
 
 namespace clg {
@@ -134,20 +134,18 @@ namespace clg {
      * userdata
      */
     template<typename T>
-    struct converter<T*> {
-        static T* from_lua(lua_State* l, int n) {
+    struct converter<std::shared_ptr<T>> {
+        static std::shared_ptr<T> from_lua(lua_State* l, int n) {
             if (lua_isuserdata(l, n)) {
-                return reinterpret_cast<T*>((*reinterpret_cast<clg::intrusive_ptr::info**>(lua_touserdata(l, n)))->ref);
+                return reinterpret_cast<shared_ptr_helper*>(lua_touserdata(l, n))->as<T>();
             }
             detail::throw_converter_error(l, n, "not a userdata");
             return nullptr;
         }
-        static int to_lua(lua_State* l, T* v) {
+        static int to_lua(lua_State* l, std::shared_ptr<T> v) {
             auto classname = clg::class_name<T>();
-            auto info = clg::intrusive_ptr::wrap(v);
-
-            auto t = reinterpret_cast<clg::intrusive_ptr::info**>(lua_newuserdata(l, sizeof(void*)));
-            *t = info;
+            auto t = reinterpret_cast<shared_ptr_helper*>(lua_newuserdata(l, sizeof(shared_ptr_helper)));
+            new (t) shared_ptr_helper(std::move(v));
             luaL_getmetatable(l, classname.c_str());
             if (lua_isnil(l, -1)) {
                 lua_pop(l, 1);

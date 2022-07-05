@@ -14,32 +14,32 @@ BOOST_AUTO_TEST_CASE(class_name) {
 }
 
 BOOST_AUTO_TEST_CASE(check1) {
-    user u;
-    u.id = 228;
-    u.name = "alesha123";
+    auto u = std::make_shared<user>();
+    u->id = 228;
+    u->name = "alesha123";
 
     clg::vm v;
     v.do_string<void>("function govno(a) return a end");
 
-    auto returned = v.global_function("govno").call<user*>(&u);
-    BOOST_CHECK_EQUAL(returned, &u);
+    auto returned = v.global_function("govno").call<std::shared_ptr<user>>(u);
+    BOOST_CHECK_EQUAL(returned, u);
 }
 
-int get_id(user* u) {
+int get_id(std::shared_ptr<user> u) {
     return u->id;
 }
 
 BOOST_AUTO_TEST_CASE(check2) {
-    user u;
-    u.id = 228;
-    u.name = "alesha123";
+    auto u = std::make_shared<user>();
+    u->id = 228;
+    u->name = "alesha123";
 
     clg::vm v;
 
     v.register_function<get_id>("get_id");
     v.do_string<void>("function govno(a) return 'id:'..get_id(a) end");
 
-    auto returned = v.global_function("govno").call<std::string>(&u);
+    auto returned = v.global_function("govno").call<std::string>(u);
     BOOST_CHECK_EQUAL(returned, "id:228");
 }
 

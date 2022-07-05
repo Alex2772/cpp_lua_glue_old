@@ -1,6 +1,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <clg/clg.hpp>
+#include <set>
 
 BOOST_AUTO_TEST_SUITE(classes)
 
@@ -146,7 +147,7 @@ BOOST_AUTO_TEST_CASE(return_class) {
         BOOST_CHECK_EQUAL(c, 123);
     });
     v.register_function("makePerson", []() {
-        return new Person("loh", "bolotniy");
+        return std::make_shared<Person>("loh", "bolotniy");
     });
     v.register_class<Person>()
             .method<&Person::simpleCallRet>("simpleCallRet");
@@ -194,37 +195,38 @@ return p1 == p2
 }
 
 BOOST_AUTO_TEST_CASE(same_object) {
+    thread_local std::set<int> destroyedObjects;
+    class SomeClass {
+    private:
+        int mValue;
+
+    public:
+        SomeClass(int value) : mValue(value) {}
+
+        ~SomeClass() {
+            destroyedObjects.insert(mValue);
+        }
+
+        int getValue() {
+            return mValue;
+        }
+
+        static std::shared_ptr<SomeClass>& get228() {
+            static auto s = std::make_shared<SomeClass>(228);
+            return s;
+        }
+        static std::shared_ptr<SomeClass>& get322() {
+            static auto s = std::make_shared<SomeClass>(322);
+            return s;
+        }
+    };
+
     {
         check = false;
         checkAnimal = false;
         destructorCalled = false;
 
         clg::vm v;
-
-        class SomeClass {
-        private:
-            int mValue;
-
-        public:
-            SomeClass(int value) : mValue(value) {}
-
-            ~SomeClass() {
-                classes::destructorCalled = true;
-            }
-
-            int getValue() {
-                return mValue;
-            }
-
-            static SomeClass* get228() {
-                static auto s = new SomeClass(228);
-                return s;
-            }
-            static SomeClass* get322() {
-                static auto s = new SomeClass(322);
-                return s;
-            }
-        };
 
         v.register_class<SomeClass>()
                 .staticFunction<&SomeClass::get228>("get228")
@@ -266,8 +268,23 @@ return v1 ~= v2
 )");
             BOOST_TEST(result);
         }
+
+        // destroy only 228; reference should be kept
+        SomeClass::get228() = nullptr;
+        BOOST_TEST(destroyedObjects.empty());
     }
-    BOOST_TEST(destructorCalled);
+
+    // 228 should be destroyed
+    BOOST_TEST((destroyedObjects.find(228) != destroyedObjects.end()));
+
+    // 322 should be kept since it is still alive in c++
+    BOOST_TEST((destroyedObjects.find(322) == destroyedObjects.end()));
+
+    // now destroy 322
+    SomeClass::get322() = nullptr;
+
+    // check both are destroyed
+    BOOST_CHECK_EQUAL(destroyedObjects.size(), 2);
 }
 
 

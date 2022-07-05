@@ -10,8 +10,11 @@ namespace clg {
     public:
         ref() = default;
         ref(const ref& other) noexcept: mLua(other.mLua), mPtr([&] {
-            other.push_value_to_stack();
-            return luaL_ref(other.mLua, LUA_REGISTRYINDEX);
+            if (other.mLua) {
+                other.push_value_to_stack();
+                return luaL_ref(other.mLua, LUA_REGISTRYINDEX);
+            }
+            return -1;
         }()) {}
         ref(ref&& other) noexcept: mLua(other.mLua), mPtr(other.mPtr) {
             other.mLua = nullptr;

@@ -9,7 +9,7 @@
 #include "dynamic_result.hpp"
 #include "lua_function.hpp"
 #include "util.hpp"
-#include "intrusive_ptr.hpp"
+#include "shared_ptr_helper.hpp"
 
 #include <cstring>
 

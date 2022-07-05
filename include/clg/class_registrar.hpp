@@ -53,14 +53,14 @@ namespace clg {
             struct wrapper_function_helper_t {};
             template<typename... Args>
             struct wrapper_function_helper_t<state_interface::types<Args...>> {
-                static typename class_info::return_t call(C* self, Args... args) {
+                static typename class_info::return_t call(std::shared_ptr<C> self, Args... args) {
                     if (std::is_same_v<void, typename class_info::return_t>) {
-                        (self->*method)(args...);
+                        (self.get()->*method)(args...);
                     } else {
-                        return (self->*method)(args...);
+                        return (self.get()->*method)(args...);
                     }
                 }
-                using my_instance = typename state_interface::register_function_helper<typename class_info::return_t, C*, Args...>::template instance<call>;
+                using my_instance = typename state_interface::register_function_helper<typename class_info::return_t, std::shared_ptr<C>, Args...>::template instance<call>;
             };
 
             using wrapper_function_helper = wrapper_function_helper_t<typename class_info::args>;
@@ -97,39 +97,39 @@ namespace clg {
 
         template<typename... Args>
         struct constructor_helper {
-            static C* construct(void* self, Args... args) {
-                return new C(args...);
+            static std::shared_ptr<C> construct(void* self, Args... args) {
+                return std::make_shared<C>(std::move(args)...);
             }
         };
 
         static int gc(lua_State* l) {
             if (lua_isuserdata(l, 1)) {
-                clg::intrusive_ptr::dec<C>(*static_cast<intrusive_ptr::info**>(lua_touserdata(l, 1)));
+                static_cast<clg::shared_ptr_helper*>(lua_touserdata(l, 1))->~shared_ptr_helper();
             }
             return 0;
         }
         static int eq(lua_State* l) {
-            auto v1 = get_from_lua<C*>(l, 1);
-            auto v2 = get_from_lua<C*>(l, 2);
+            auto v1 = get_from_lua<std::shared_ptr<C>>(l, 1);
+            auto v2 = get_from_lua<std::shared_ptr<C>>(l, 2);
             push_to_lua(l, v1 == v2);
             return 1;
         }
         static int concat(lua_State* l) {
             auto v1 = get_from_lua<std::string>(l, 1);
-            auto v2 = get_from_lua<C*>(l, 2);
+            auto v2 = get_from_lua<std::shared_ptr<C>>(l, 2);
             v1 += toString(v2);
             push_to_lua(l, v1);
             return 1;
         }
         static int tostring(lua_State* l) {
-            auto v1 = get_from_lua<C*>(l, 1);
+            auto v1 = get_from_lua<std::shared_ptr<C>>(l, 1);
             push_to_lua(l, toString(v1));
             return 1;
         }
 
-        static std::string toString(C* v) {
+        static std::string toString(const std::shared_ptr<C>& v) {
             char buf[64];
-            std::sprintf(buf, "%s<%p>", class_name<C>().c_str(), v);
+            std::sprintf(buf, "%s<%p>", class_name<C>().c_str(), v.get());
             return buf;
         }
 
@@ -186,7 +186,7 @@ namespace clg {
 
         template<typename... Args>
         class_registrar<C>& constructor() {
-            using my_register_function_helper = clg::state_interface::register_function_helper<C*, void*, Args...>;
+            using my_register_function_helper = clg::state_interface::register_function_helper<std::shared_ptr<C>, void*, Args...>;
             using my_instance = typename my_register_function_helper::template instance<constructor_helper<Args...>::construct>;
 
             mConstructors.push_back({
