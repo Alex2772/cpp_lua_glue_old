@@ -19,6 +19,15 @@ namespace clg {
     template<class C>
     class class_registrar;
 
+    /**
+     * @brief Helper type. When used as a return type, the first argument passed to a c++ function is returned to lua.
+     */
+    struct builder_return_type {};
+
+    struct substitution_error: std::exception {
+        using std::exception::exception;
+    };
+
 
     /**
      * Базовый интерфейс для работы с Lua. Не инициализирует Lua самостоятельно.
@@ -28,7 +37,8 @@ namespace clg {
         lua_State* mState;
 
         void throw_syntax_error() {
-            throw lua_exception(get_from_lua<std::string>(mState));
+            auto s = get_from_lua<std::string>(mState);
+            throw lua_exception(std::move(s));
         }
 
         void register_function_raw(const std::string& name, int(* function)(lua_State* s)) {
@@ -60,32 +70,47 @@ namespace clg {
 
             static constexpr bool is_vararg = std::is_same_v<std::tuple<Args...>, std::tuple<vararg>>;
 
-            template<function_t f>
+            template<function_t f, bool passthroughSubstitutionError = false>
             struct instance {
-                static int call(lua_State* s) {
+                static int call(lua_State* s) noexcept(!passthroughSubstitutionError) {
                     try {
                         size_t argsCount = lua_gettop(s);
-                        if constexpr (!is_vararg) {
-                            if (argsCount != sizeof...(Args)) {
-                                throw std::runtime_error("invalid argument count! expected "
-                                                         + std::to_string(sizeof...(Args))
-                                                         + ", actual " + std::to_string(argsCount));
+                        std::tuple<std::decay_t<Args>...> argsTuple;
+
+                        try {
+                            if constexpr (!is_vararg) {
+                                if (argsCount != sizeof...(Args)) {
+                                    throw std::runtime_error("invalid argument count! expected "
+                                                             + std::to_string(sizeof...(Args))
+                                                             + ", actual " + std::to_string(argsCount));
+                                }
                             }
+
+                            tuple_fill_from_lua_helper<std::decay_t<Args>...>(s).template fill<0, std::decay_t<Args>...>(argsTuple);
+                        } catch (const std::exception& e) {
+                            throw substitution_error(e.what());
                         }
 
-                        std::tuple<std::decay_t<Args>...> argsTuple;
-                        tuple_fill_from_lua_helper<std::decay_t<Args>...>(s).template fill<0, std::decay_t<Args>...>(argsTuple);
-
-                        lua_pop(s, sizeof...(Args));
-
-                        if constexpr (std::is_same_v<void, Return>) {
+                        if constexpr (std::is_same_v<Return, builder_return_type>) {
+                            lua_pop(s, sizeof...(Args) - 1);
+                            (std::apply)(f, std::move(argsTuple));
+                            return 1;
+                        } else if constexpr (std::is_void_v<Return>) {
+                            lua_pop(s, sizeof...(Args));
                             // ничего не возвращается
                             (std::apply)(f, std::move(argsTuple));
                             return 0;
                         } else {
+                            lua_pop(s, sizeof...(Args));
                             // возвращаем одно значение
                             return clg::push_to_lua(s, (std::apply)(f, std::move(argsTuple)));
                         }
+                    } catch (const substitution_error& e) {
+                        if constexpr (passthroughSubstitutionError) {
+                            throw;
+                        }
+                        luaL_error(s, "cpp exception: %s", e.what());
+                        return 0;
                     } catch (const std::exception& e) {
                         luaL_error(s, "cpp exception: %s", e.what());
                         return 0;
@@ -136,9 +161,9 @@ namespace clg {
             struct wrapper_function_helper_t<types<Args...>> {
                 static typename function_info::return_t wrapper_function(Args... args) {
                     if (std::is_same_v<typename function_info::return_t, void>) {
-                        (*callable())(args...);
+                        (*callable())(std::move(args)...);
                     } else {
-                        return (*callable())(args...);
+                        return (*callable())(std::move(args)...);
                     }
                 }
             };
@@ -150,6 +175,28 @@ namespace clg {
                 return callable;
             }
 
+        };
+
+        template<typename... Callables>
+        struct overloaded_helper {
+            static int fake_lua_cfunction(lua_State* L) {
+                for (const auto& func : callable()) {
+                    auto stack = lua_gettop(L);
+                    try {
+                        return func(L);
+                    } catch (const clg::substitution_error& e) {
+
+                    }
+                    assert(lua_gettop(L) == stack);
+                }
+                luaL_error(L, "overloaded function substitution error");
+                return 0;
+            }
+
+            static std::vector<lua_CFunction>& callable() {
+                static std::vector<lua_CFunction> callable;
+                return callable;
+            }
         };
 
         explicit state_interface(lua_State* state) : mState(state) {}
@@ -171,6 +218,31 @@ namespace clg {
             using helper = callable_helper<Callable>;
             helper::callable() = new Callable(std::move(callable));
             register_function<helper::wrapper_function_helper::wrapper_function>(name);
+        }
+
+        template<typename FirstCallable, typename... RestCallables>
+        void register_function_overloaded(const std::string& name, FirstCallable&& callable, RestCallables&&... restCallables) {
+            using helper = overloaded_helper<FirstCallable, RestCallables...>;
+            assert(("already registered", helper::callable().empty()));
+            helper::callable() = { wrap_lambda_to_cfunction_substitution(std::forward<FirstCallable>(callable)),
+                                   wrap_lambda_to_cfunction_substitution(std::forward<RestCallables>(restCallables)...)  };
+            register_function_raw(name, helper::fake_lua_cfunction);
+        }
+
+
+        template<typename Callable, bool passthroughSubstitutionError = false>
+        lua_CFunction wrap_lambda_to_cfunction(Callable&& callable) {
+            using helper = callable_helper<Callable>;
+            helper::callable() = new Callable(std::forward<Callable>(callable));
+            constexpr auto f = helper::wrapper_function_helper::wrapper_function;
+            using my_register_function_helper = decltype(make_register_function_helper(f));
+            using my_instance = typename my_register_function_helper::template instance<f, passthroughSubstitutionError>;
+            return my_instance::call;
+        }
+
+        template<typename Callable>
+        lua_CFunction wrap_lambda_to_cfunction_substitution(Callable&& callable) { // used only for register_function_overloaded
+            return wrap_lambda_to_cfunction<Callable, true>(std::forward<Callable>(callable));
         }
 
         template<typename ReturnType = void>

@@ -42,7 +42,8 @@ namespace clg {
         }
 
         ~stack_integrity_check() {
-            assert(lua_gettop(mLua) == mStack);
+            auto current = lua_gettop(mLua);
+            assert(current == mStack);
         }
 
     private:

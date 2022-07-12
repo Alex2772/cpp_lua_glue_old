@@ -4,21 +4,20 @@
 
 #pragma once
 
-#include "value.hpp"
 #include "converter.hpp"
 #include <map>
 #include <string>
 
 namespace clg {
-    class table: public std::map<std::string, clg::value> {
+    class table: public std::map<std::string, clg::ref> {
     public:
-        using std::map<std::string, clg::value>::map;
+        using std::map<std::string, clg::ref>::map;
 
         [[nodiscard]]
-        std::vector<clg::value> toArray() const {
-            std::vector<clg::value> result;
+        std::vector<clg::ref> toArray() const {
+            std::vector<clg::ref> result;
             result.resize(size());
-            for (auto& v : *this) {
+            for (const auto& v : *this) {
                 try {
                     size_t index = std::stoul(v.first) - 1;
                     if (index >= result.size()) {
@@ -49,8 +48,36 @@ namespace clg {
             {
                 // copy key so that lua_tostring should not break lua_next by modifying key
                 lua_pushvalue(l, -2);
-                result[clg::get_from_lua<std::string>(l, -1)] = clg::get_from_lua<clg::value>(l, -2);
+                result[clg::get_from_lua<std::string>(l, -1)] = clg::get_from_lua<clg::ref>(l, -2);
                 lua_pop(l, 2);
+            }
+            return result;
+        }
+        /*
+        static int to_lua(lua_State* l, std::nullptr_t v) {
+            lua_pushnil(l);
+            return 1;
+        }*/
+    };
+
+    using table_array = std::vector<ref>;
+
+    template<>
+    struct converter<table_array> {
+        static clg::table_array from_lua(lua_State* l, int n) {
+            if (!lua_istable(l, n)) {
+                clg::detail::throw_converter_error(l, n, "not a table");
+            }
+
+            clg::table_array result;
+            if (n < 0) {
+                n = lua_gettop(l) + n + 1;
+            }
+
+            lua_pushnil(l);
+            while (lua_next(l, n) != 0)
+            {
+                result.push_back(ref::from_stack(l));
             }
             return result;
         }

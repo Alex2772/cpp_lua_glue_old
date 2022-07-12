@@ -77,15 +77,18 @@ namespace clg {
 
         void push_function_to_be_called() const noexcept {
             mRef.push_value_to_stack();
+            assert(lua_isfunction(mLua, -1));
         }
 
         void do_call(unsigned args, int results) const {
             if (lua_pcall(mLua, args, results, 0)) {
                 try {
                     auto name = any_to_string(mLua);
-                    throw lua_exception("failed to call " + name + ": " + any_to_string(mLua));
+                    auto s = any_to_string(mLua);
+                    throw lua_exception("failed to call " + name + ": " + s);
                 } catch (...) {
-                    throw lua_exception(get_from_lua<std::string>(mLua));
+                    auto s = any_to_string(mLua);
+                    throw lua_exception(s);
                 }
             }
         }

@@ -11,6 +11,14 @@
 
 namespace clg {
     namespace impl {
+        struct Method {
+            std::string name;
+            lua_CFunction cFunction;
+        };
+    }
+    using lua_cfunctions = std::vector<impl::Method>;
+
+    namespace impl {
 #if LUA_VERSION_NUM == 501
         static void newlib(lua_State* L, std::vector<luaL_Reg>& l) {
             lua_createtable(L, 0, l.size() - 1);
@@ -21,8 +29,16 @@ namespace clg {
         luaL_newlib(L, l.data());
     }
 #endif
+        static void newlib(lua_State* L, const lua_cfunctions& l) {
+            std::vector<luaL_Reg> reg;
+            reg.reserve(l.size() + 1);
+            for (const auto& c : l) {
+                reg.push_back({c.name.c_str(), c.cFunction});
+            }
+            reg.push_back({nullptr, nullptr});
+            newlib(L, reg);
+        }
     }
-
 
     template<class C>
     class class_registrar {
@@ -36,13 +52,8 @@ namespace clg {
 
         }
 
-        struct Method {
-            std::string name;
-            lua_CFunction cFunction;
-        };
-
-        std::vector<Method> mMethods;
-        std::vector<Method> mStaticFunctions;
+        lua_cfunctions mMethods;
+        lua_cfunctions mStaticFunctions;
         std::vector<lua_CFunction> mConstructors;
 
         template<auto methodPtr>
@@ -55,17 +66,17 @@ namespace clg {
             struct wrapper_function_helper_t<state_interface::types<Args...>> {
                 static typename class_info::return_t method(std::shared_ptr<C> self, Args... args) {
                     if (std::is_same_v<void, typename class_info::return_t>) {
-                        (self.get()->*methodPtr)(args...);
+                        (self.get()->*methodPtr)(std::move(args)...);
                     } else {
-                        return (self.get()->*methodPtr)(args...);
+                        return (self.get()->*methodPtr)(std::move(args)...);
                     }
                 }
-                static std::shared_ptr<C> builder_method(std::shared_ptr<C> self, Args... args) {
-                    (self.get()->*methodPtr)(args...);
-                    return self;
+                static clg::builder_return_type builder_method(std::shared_ptr<C> self, Args... args) {
+                    (self.get()->*methodPtr)(std::move(args)...);
+                    return {};
                 }
                 using my_instance = typename state_interface::register_function_helper<typename class_info::return_t, std::shared_ptr<C>, Args...>::template instance<method>;
-                using my_instance_builder = typename state_interface::register_function_helper<std::shared_ptr<C>, std::shared_ptr<C>, Args...>::template instance<builder_method>;
+                using my_instance_builder = typename state_interface::register_function_helper<clg::builder_return_type, std::shared_ptr<C>, Args...>::template instance<builder_method>;
             };
 
             using wrapper_function_helper = wrapper_function_helper_t<typename class_info::args>;
@@ -81,16 +92,16 @@ namespace clg {
             struct wrapper_function_helper_t<state_interface::types<Args...>> {
                 static typename class_info::return_t static_method(void* self, Args... args) {
                     if (std::is_same_v<void, typename class_info::return_t>) {
-                        method(args...);
+                        method(std::move(args)...);
                     } else {
-                        return method(args...);
+                        return method(std::move(args)...);
                     }
                 }
                 static typename class_info::return_t static_method_no_this(Args... args) {
                     if (std::is_same_v<void, typename class_info::return_t>) {
-                        method(args...);
+                        method(std::move(args)...);
                     } else {
-                        return method(args...);
+                        return method(std::move(args)...);
                     }
                 }
                 using my_instance = typename state_interface::register_function_helper<typename class_info::return_t, void*, Args...>::template instance<static_method>;
@@ -120,9 +131,9 @@ namespace clg {
             return 1;
         }
         static int concat(lua_State* l) {
-            auto v1 = get_from_lua<std::string>(l, 1);
-            auto v2 = get_from_lua<std::shared_ptr<C>>(l, 2);
-            v1 += toString(v2);
+            auto v1 = any_to_string(l, 1);
+            auto v2 = any_to_string(l, 2);
+            v1 += v2;
             push_to_lua(l, v1);
             return 1;
         }
@@ -140,7 +151,6 @@ namespace clg {
 
     public:
         ~class_registrar() {
-            std::vector<luaL_Reg> methods;
             std::vector<luaL_Reg> staticFunctions;
             auto top = lua_gettop(mClg);
 
@@ -150,11 +160,7 @@ namespace clg {
             for (auto& c : mStaticFunctions) {
                 staticFunctions.push_back({c.name.c_str(), c.cFunction});
             }
-            for (auto& c : mMethods) {
-                methods.push_back({c.name.c_str(), c.cFunction});
-            }
 
-            methods.push_back({nullptr, nullptr});
             staticFunctions.push_back({nullptr, nullptr});
 
             auto classname = clg::class_name<C>();
@@ -176,7 +182,7 @@ namespace clg {
             luaL_setfuncs(mClg, metatableFunctions, 0);
 
             // metatable.__index = methods
-            impl::newlib(mClg, methods);
+            impl::newlib(mClg, mMethods);
             lua_setfield(mClg, metatableId, "__index");
 
             // setmetatable(clazz, metatable)

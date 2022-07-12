@@ -190,5 +190,35 @@ BOOST_AUTO_TEST_CASE(vararg) {
     BOOST_TEST(called);
 }
 
+BOOST_AUTO_TEST_CASE(overloading1) {
+    clg::vm v;
+
+    bool called1 = false;
+    bool called2 = false;
+
+    v.register_function_overloaded("call", [&](int v1) {
+        BOOST_TEST(!called1);
+        BOOST_TEST(!called2);
+        called1 = true;
+        BOOST_CHECK_EQUAL(v1, 123);
+    }, [&](int v1, int v2) {
+        BOOST_TEST(called1);
+        BOOST_TEST(!called2);
+        called2 = true;
+
+        BOOST_CHECK_EQUAL(v1, 456);
+        BOOST_CHECK_EQUAL(v2, 789);
+    });
+
+    v.do_string(R"(
+call(123)
+call(456, 789)
+)");
+
+    BOOST_TEST(called1);
+    BOOST_TEST(called2);
+}
+
+
 
 BOOST_AUTO_TEST_SUITE_END()

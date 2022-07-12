@@ -21,9 +21,9 @@ namespace clg {
         }
 
         template<typename T>
-        std::shared_ptr<T> as() const noexcept {
-            if (auto& actual = typeid(T); actual != type) {
-                throw std::runtime_error(std::string("type mismatch: expected ") + type.name() + ", actual" + actual.name());
+        std::shared_ptr<T> as() const {
+            if (auto& expected = typeid(T); expected != type) {
+                throw std::runtime_error(std::string("type mismatch: expected ") + expected.name() + ", actual " + type.name());
             }
             return reinterpret_cast<const std::shared_ptr<T>&>(ptr);
         }

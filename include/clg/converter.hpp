@@ -13,7 +13,7 @@
 namespace clg {
 
     static std::string any_to_string(lua_State* l, int n = -1) {
-        return lua_typename(l, lua_type(l, n));
+        return lua_tostring(l, n);
     }
 
     namespace detail {

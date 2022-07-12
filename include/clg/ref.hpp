@@ -29,6 +29,17 @@ namespace clg {
             other.mPtr = -1;
             return *this;
         }
+        ref& operator=(const ref& other) noexcept {
+            mLua = other.mLua;
+            mPtr = [&] {
+                if (other.mLua) {
+                    other.push_value_to_stack();
+                    return luaL_ref(other.mLua, LUA_REGISTRYINDEX);
+                }
+                return -1;
+            }();
+            return *this;
+        }
 
         ~ref() {
             if (mPtr != -1) {
@@ -65,6 +76,10 @@ namespace clg {
             auto v = clg::get_from_lua<T>(mLua, -1);
             lua_pop(mLua, 1);
             return v;
+        }
+
+        lua_State* lua() const noexcept {
+            return mLua;
         }
 
     private:
