@@ -9,13 +9,15 @@
 #include <string>
 
 namespace clg {
+    using table_array = std::vector<ref>;
+
     class table: public std::map<std::string, clg::ref> {
     public:
         using std::map<std::string, clg::ref>::map;
 
         [[nodiscard]]
-        std::vector<clg::ref> toArray() const {
-            std::vector<clg::ref> result;
+        table_array toArray() const {
+            table_array result;
             result.resize(size());
             for (const auto& v : *this) {
                 try {
@@ -59,8 +61,6 @@ namespace clg {
             return 1;
         }*/
     };
-
-    using table_array = std::vector<ref>;
 
     template<>
     struct converter<table_array> {

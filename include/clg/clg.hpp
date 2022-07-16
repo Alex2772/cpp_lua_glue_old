@@ -180,16 +180,20 @@ namespace clg {
         template<typename... Callables>
         struct overloaded_helper {
             static int fake_lua_cfunction(lua_State* L) {
+                std::string errorDescription;
                 for (const auto& func : callable()) {
                     auto stack = lua_gettop(L);
                     try {
                         return func(L);
                     } catch (const clg::substitution_error& e) {
-
+                        if (!errorDescription.empty()) {
+                            errorDescription += "; ";
+                        }
+                        errorDescription += e.what();
                     }
                     assert(lua_gettop(L) == stack);
                 }
-                luaL_error(L, "overloaded function substitution error");
+                luaL_error(L, "overloaded function substitution error: %s", errorDescription.c_str());
                 return 0;
             }
 
@@ -221,12 +225,13 @@ namespace clg {
         }
 
         template<typename FirstCallable, typename... RestCallables>
-        void register_function_overloaded(const std::string& name, FirstCallable&& callable, RestCallables&&... restCallables) {
+        std::vector<lua_CFunction>& register_function_overloaded(const std::string& name, FirstCallable&& firstCallable, RestCallables&&... restCallables) {
             using helper = overloaded_helper<FirstCallable, RestCallables...>;
-            assert(("already registered", helper::callable().empty()));
-            helper::callable() = { wrap_lambda_to_cfunction_substitution(std::forward<FirstCallable>(callable)),
-                                   wrap_lambda_to_cfunction_substitution(std::forward<RestCallables>(restCallables)...)  };
+            auto& callable = helper::callable();
+            callable = { wrap_lambda_to_cfunction_for_overloading(std::forward<FirstCallable>(firstCallable)),
+                         wrap_lambda_to_cfunction_for_overloading(std::forward<RestCallables>(restCallables))...  };
             register_function_raw(name, helper::fake_lua_cfunction);
+            return helper::callable();
         }
 
 
@@ -241,7 +246,7 @@ namespace clg {
         }
 
         template<typename Callable>
-        lua_CFunction wrap_lambda_to_cfunction_substitution(Callable&& callable) { // used only for register_function_overloaded
+        lua_CFunction wrap_lambda_to_cfunction_for_overloading(Callable&& callable) { // used only for register_function_overloaded
             return wrap_lambda_to_cfunction<Callable, true>(std::forward<Callable>(callable));
         }
 

@@ -39,7 +39,7 @@ namespace clg {
                 }
                 detail::throw_converter_error(l, n, "not a integer, nor boolean nor number");
             }
-            throw clg_exception("unimplemented converter");
+            throw clg_exception("unimplemented converter for " + clg::class_name<T>());
         }
         static int to_lua(lua_State* l, const T& v) {
             if constexpr (std::is_integral_v<T>) {
@@ -53,7 +53,7 @@ namespace clg {
                 lua_pushnumber(l, v);
                 return 1;
             }
-            throw clg_exception("unimplemented converter");
+            throw clg_exception("unimplemented converter for " + clg::class_name<T>());
         }
     };
 
