@@ -25,7 +25,7 @@ namespace clg {
     template<typename T>
     struct converter {
         static T from_lua(lua_State* l, int n) {
-            if constexpr (std::is_integral_v<T> || std::is_floating_point_v<T>) {
+            if constexpr (std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_enum_v<T>) {
 #ifdef lua_isinteger
                 if (lua_isinteger(l, n)) {
                     return static_cast<T>(lua_tointeger(l, n));
@@ -42,7 +42,7 @@ namespace clg {
             throw clg_exception("unimplemented converter for " + clg::class_name<T>());
         }
         static int to_lua(lua_State* l, const T& v) {
-            if constexpr (std::is_integral_v<T>) {
+            if constexpr (std::is_integral_v<T> || std::is_enum_v<T>) {
                 if constexpr (std::is_same_v<T, bool>) {
                     lua_pushboolean(l, v);
                 } else {
@@ -70,6 +70,7 @@ namespace clg {
             return 1;
         }
     };
+
     template<>
     struct converter<const char*> {
         static const char* from_lua(lua_State* l, int n) {

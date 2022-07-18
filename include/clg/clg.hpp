@@ -11,6 +11,7 @@
 #include "util.hpp"
 #include "vararg.hpp"
 #include "shared_ptr_helper.hpp"
+#include "magic_enum.hpp"
 
 #include <cstring>
 
@@ -272,6 +273,21 @@ namespace clg {
         operator lua_State*() const {
             return mState;
         }
+
+        template<typename T>
+        void register_enum() noexcept {
+            static_assert(std::is_enum_v<T>, "T expected to be enum");
+            stack_integrity_check checks(mState);
+
+            lua_createtable(mState, 0, magic_enum::enum_values<T>().size());
+
+            for (const auto value : magic_enum::enum_values<T>()) {
+                lua_pushstring(mState, magic_enum::enum_name(value).data());
+                lua_pushinteger(mState, (int)value);
+                lua_settable(mState, -3);
+            }
+            lua_setglobal(mState, clg::class_name<T>().c_str());
+        };
 
 
         /**
