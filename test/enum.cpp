@@ -25,4 +25,20 @@ BOOST_AUTO_TEST_CASE(to_lua) {
 }
 
 
+BOOST_AUTO_TEST_CASE(custom_type) {
+    clg::vm v;
+    v.register_enum<MyEnum>([](MyEnum t) {
+        switch (t) {
+            case MyEnum::kValue1: return "biba";
+            case MyEnum::kValue2: return "boba";
+            case MyEnum::kValue3: return "???";
+        }
+    });
+
+    BOOST_TEST(v.do_string<bool>("return MyEnum.kValue1 == 'biba'"));
+    BOOST_TEST(v.do_string<bool>("return MyEnum.kValue2 == 'boba'"));
+    BOOST_TEST(v.do_string<bool>("return MyEnum.kValue3 == '???'"));
+}
+
+
 BOOST_AUTO_TEST_SUITE_END()
