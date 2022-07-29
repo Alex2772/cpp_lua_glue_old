@@ -81,11 +81,16 @@ namespace clg {
             }
             return result;
         }
-        /*
-        static int to_lua(lua_State* l, std::nullptr_t v) {
-            lua_pushnil(l);
+
+        static int to_lua(lua_State* l, const table_array& v) {
+            lua_createtable(l, v.size(), 0);
+
+            for (unsigned i = 0; i < v.size(); ++i) {
+                v[i].push_value_to_stack();
+                lua_rawseti(l, -2, i + 1);
+            }
             return 1;
-        }*/
+        }
     };
 
 }
