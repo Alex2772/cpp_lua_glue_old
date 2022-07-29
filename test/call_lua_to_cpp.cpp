@@ -189,6 +189,17 @@ BOOST_AUTO_TEST_CASE(vararg) {
 
     BOOST_TEST(called);
 }
+BOOST_AUTO_TEST_CASE(vararg_empty) {
+    clg::vm v;
+    called = false;
+    v.register_function("call", [&](clg::vararg args) {
+        called = true;
+        BOOST_CHECK_EQUAL(args.size(), 0);
+    });
+    v.do_string("call()");
+
+    BOOST_TEST(called);
+}
 
 BOOST_AUTO_TEST_CASE(overloading1) {
     clg::vm v;
