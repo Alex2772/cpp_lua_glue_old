@@ -1,6 +1,6 @@
 #pragma once
 
-#include <lua.hpp>
+#include "lua.hpp"
 #include "converter.hpp"
 #include "value.hpp"
 #include <cassert>

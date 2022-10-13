@@ -9,7 +9,26 @@ thread_local bool constructorCalled = false;
 thread_local bool destructorCalled = false;
 thread_local bool check = false;
 thread_local bool checkAnimal = false;
+    thread_local std::set<int> destroyedObjects;
 
+    struct Object {
+    public:
+        void check1() {
+            BOOST_CHECK_EQUAL(mString, "hello");
+            mString = "world";
+        }
+        void check2() {
+            BOOST_CHECK_EQUAL(mString, "world");
+            mString = "!";
+        }
+
+        [[nodiscard]]
+        const std::string& string() const noexcept {
+            return mString;
+        }
+    private:
+        std::string mString = "hello";
+    };
 class Person {
 private:
     std::string mName;
@@ -53,6 +72,30 @@ public:
     }
 };
 
+    class SomeClass {
+    private:
+        int mValue;
+
+    public:
+        SomeClass(int value) : mValue(value) {}
+
+        ~SomeClass() {
+            destroyedObjects.insert(mValue);
+        }
+
+        int getValue() {
+            return mValue;
+        }
+
+        static std::shared_ptr<SomeClass>& get228() {
+            static auto s = std::make_shared<SomeClass>(228);
+            return s;
+        }
+        static std::shared_ptr<SomeClass>& get322() {
+            static auto s = std::make_shared<SomeClass>(322);
+            return s;
+        }
+    };
 
 class Animal {
 private:
@@ -197,24 +240,6 @@ BOOST_AUTO_TEST_CASE(builder_methods) {
 
     clg::vm v;
 
-    struct Object {
-    public:
-        void check1() {
-            BOOST_CHECK_EQUAL(mString, "hello");
-            mString = "world";
-        }
-        void check2() {
-            BOOST_CHECK_EQUAL(mString, "world");
-            mString = "!";
-        }
-
-        [[nodiscard]]
-        const std::string& string() const noexcept {
-            return mString;
-        }
-    private:
-        std::string mString = "hello";
-    };
 
     v.register_class<Object>()
             .constructor<>()
@@ -226,31 +251,6 @@ BOOST_AUTO_TEST_CASE(builder_methods) {
 }
 
 BOOST_AUTO_TEST_CASE(same_object) {
-    thread_local std::set<int> destroyedObjects;
-    class SomeClass {
-    private:
-        int mValue;
-
-    public:
-        SomeClass(int value) : mValue(value) {}
-
-        ~SomeClass() {
-            destroyedObjects.insert(mValue);
-        }
-
-        int getValue() {
-            return mValue;
-        }
-
-        static std::shared_ptr<SomeClass>& get228() {
-            static auto s = std::make_shared<SomeClass>(228);
-            return s;
-        }
-        static std::shared_ptr<SomeClass>& get322() {
-            static auto s = std::make_shared<SomeClass>(322);
-            return s;
-        }
-    };
 
     {
         check = false;
@@ -331,10 +331,6 @@ BOOST_AUTO_TEST_CASE(staticMethod) {
     BOOST_CHECK_EQUAL(result, (1 ^ 2));
 }
 
-BOOST_AUTO_TEST_CASE(inheritance) {
-
-    clg::vm v;
-
     struct IName {
     public:
         virtual std::string name() = 0;
@@ -350,6 +346,10 @@ BOOST_AUTO_TEST_CASE(inheritance) {
             return std::make_shared<NameHello>();
         }
     };
+BOOST_AUTO_TEST_CASE(inheritance) {
+
+    clg::vm v;
+
 
     v.register_class<IName>()
             .method<&IName::name>("name");
