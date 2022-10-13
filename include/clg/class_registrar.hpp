@@ -11,14 +11,6 @@
 
 namespace clg {
     namespace impl {
-        struct Method {
-            std::string name;
-            lua_CFunction cFunction;
-        };
-    }
-    using lua_cfunctions = std::vector<impl::Method>;
-
-    namespace impl {
 #if LUA_VERSION_NUM == 501
         static void newlib(lua_State* L, std::vector<luaL_Reg>& l) {
             lua_createtable(L, 0, l.size() - 1);
@@ -151,8 +143,30 @@ namespace clg {
 
     public:
         ~class_registrar() {
+            mClg.class_metainfo();
+
             std::vector<luaL_Reg> staticFunctions;
             auto top = lua_gettop(mClg);
+
+            if constexpr (std::is_base_of_v<clg::allow_lua_inheritance, C>) {
+                if constexpr(!std::is_abstract_v<C>) {
+                    C instance;
+                    for (const auto& e: mClg.class_metainfo()) {
+                        if (e.isBaseOf(&instance)) {
+                            for (const auto& method : e.methods) {
+                                auto it = std::find_if(mMethods.begin(), mMethods.end(), [&](const auto& v) {
+                                    return v.name == method.name;
+                                });
+                                if (it == mMethods.end()) {
+                                    mMethods.push_back(method);
+                                } else {
+                                    *it = method;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             for (auto& c : mConstructors) {
                 staticFunctions.push_back({"new", c});
@@ -192,6 +206,15 @@ namespace clg {
             // _G["Classname"] = clazz
             lua_setglobal(mClg, classname.c_str());
             assert(top == lua_gettop(mClg));
+
+            if constexpr (std::is_base_of_v<clg::allow_lua_inheritance, C>) {
+                mClg.class_metainfo().push_back({
+                    [](clg::allow_lua_inheritance* probe) {
+                        return dynamic_cast<clg::allow_lua_inheritance*>(probe) != nullptr;
+                    },
+                    std::move(mMethods)
+                });
+            }
         }
 
 

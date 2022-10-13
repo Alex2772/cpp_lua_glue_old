@@ -30,6 +30,20 @@ namespace clg {
         using std::runtime_error::runtime_error;
     };
 
+    namespace impl {
+        struct Method {
+            std::string name;
+            lua_CFunction cFunction;
+        };
+    }
+    using lua_cfunctions = std::vector<impl::Method>;
+
+
+    struct class_inherit_metainfo {
+        std::function<bool(clg::allow_lua_inheritance* child)> isBaseOf;
+        lua_cfunctions methods;
+    };
+
 
     /**
      * Базовый интерфейс для работы с Lua. Не инициализирует Lua самостоятельно.
@@ -49,7 +63,14 @@ namespace clg {
         }
 
 
+        std::vector<class_inherit_metainfo> mClassMetainfo;
+
     public:
+
+
+        std::vector<class_inherit_metainfo>& class_metainfo() {
+            return mClassMetainfo;
+        }
 
         template<typename... TupleArgs>
         struct tuple_fill_from_lua_helper {

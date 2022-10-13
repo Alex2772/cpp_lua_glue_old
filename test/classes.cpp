@@ -331,25 +331,28 @@ BOOST_AUTO_TEST_CASE(staticMethod) {
     BOOST_CHECK_EQUAL(result, (1 ^ 2));
 }
 
-    struct IName: clg::allow_lua_inheritance {
-    public:
-        virtual std::string name() = 0;
-    };
+struct IName: clg::allow_lua_inheritance {
+public:
+    virtual std::string name() = 0;
 
-    struct NameHello: IName {
-    public:
-        std::string name() override {
-            return "hello";
-        }
+    std::string callNameFromBaseClass() {
+        return name();
+    }
+};
 
-        static std::shared_ptr<NameHello> make() {
-            return std::make_shared<NameHello>();
-        }
-    };
-BOOST_AUTO_TEST_CASE(inheritance) {
+struct NameHello: IName {
+public:
+    std::string name() override {
+        return "hello";
+    }
 
+    static std::shared_ptr<NameHello> make() {
+        return std::make_shared<NameHello>();
+    }
+};
+
+BOOST_AUTO_TEST_CASE(inheritance_cpp) {
     clg::vm v;
-
 
     v.register_class<IName>()
             .method<&IName::name>("name");
@@ -362,6 +365,20 @@ BOOST_AUTO_TEST_CASE(inheritance) {
     });
 
     auto result = v.do_string<std::string>("return getName(NameHello.make())");
+    BOOST_CHECK_EQUAL(result, "hello");
+}
+
+BOOST_AUTO_TEST_CASE(inheritance_lua) {
+    clg::vm v;
+
+    v.register_class<IName>()
+            .method<&IName::name>("name")
+            .method<&IName::callNameFromBaseClass>("callNameFromBaseClass");
+
+    v.register_class<NameHello>()
+            .staticFunction<NameHello::make>("make");
+
+    auto result = v.do_string<std::string>("return NameHello.make():callNameFromBaseClass()");
     BOOST_CHECK_EQUAL(result, "hello");
 }
 BOOST_AUTO_TEST_SUITE_END()
