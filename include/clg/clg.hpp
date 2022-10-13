@@ -14,6 +14,7 @@
 #include "magic_enum.hpp"
 
 #include <cstring>
+#include <thread>
 
 namespace clg {
 
@@ -25,8 +26,8 @@ namespace clg {
      */
     struct builder_return_type {};
 
-    struct substitution_error: std::exception {
-        using std::exception::exception;
+    struct substitution_error: std::runtime_error {
+        using std::runtime_error::runtime_error;
     };
 
 
@@ -36,6 +37,7 @@ namespace clg {
     class state_interface {
     private:
         lua_State* mState;
+        std::thread::id mMyThread = std::this_thread::get_id();
 
         void throw_syntax_error() {
             auto s = get_from_lua<std::string>(mState);
@@ -45,6 +47,7 @@ namespace clg {
         void register_function_raw(const std::string& name, int(* function)(lua_State* s)) {
             lua_register(mState, name.c_str(), function);
         }
+
 
     public:
 
@@ -102,7 +105,9 @@ namespace clg {
                             (std::apply)(f, std::move(argsTuple));
                             return 0;
                         } else {
-                            lua_pop(s, sizeof...(Args));
+                            if constexpr (!is_vararg) {
+                                lua_pop(s, sizeof...(Args));
+                            }
                             // возвращаем одно значение
                             return clg::push_to_lua(s, (std::apply)(f, std::move(argsTuple)));
                         }
@@ -271,9 +276,14 @@ namespace clg {
         }
 
         operator lua_State*() const {
+            assert(("multithreading is not supported", mMyThread == std::this_thread::get_id()));
             return mState;
         }
 
+        template<typename Enum>
+        static int to_int_mapper(Enum value) {
+            return static_cast<int>(value);
+        }
         template<typename T, typename Mapper = decltype(to_int_mapper<T>)>
         void register_enum(Mapper&& mapper = to_int_mapper<T>) noexcept {
             static_assert(std::is_enum_v<T>, "T expected to be enum");
@@ -290,6 +300,15 @@ namespace clg {
         };
 
 
+        template<typename T>
+        void set_global_value(std::string_view name, const T& value) noexcept {
+            clg::stack_integrity_check check(*this);
+            push_to_lua(mState, value);
+            lua_setglobal(mState, name.data());
+        }
+
+
+
         /**
          * Вызов глобальной функции.
          *
@@ -301,11 +320,6 @@ namespace clg {
             return {clg::ref::from_stack(*this), *this};
         }
 
-    private:
-        template<typename Enum>
-        static int to_int_mapper(Enum value) {
-            return static_cast<int>(value);
-        }
     };
 
     /**

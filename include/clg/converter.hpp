@@ -147,6 +147,10 @@ namespace clg {
             return nullptr;
         }
         static int to_lua(lua_State* l, std::shared_ptr<T> v) {
+            if (v == nullptr) {
+                lua_pushnil(l);
+                return 1;
+            }
             auto classname = clg::class_name<T>();
             auto t = reinterpret_cast<shared_ptr_helper*>(lua_newuserdata(l, sizeof(shared_ptr_helper)));
             new (t) shared_ptr_helper(std::move(v));

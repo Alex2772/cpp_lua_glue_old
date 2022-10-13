@@ -18,16 +18,16 @@ namespace clg {
         [[nodiscard]]
         table_array toArray() const {
             table_array result;
-            result.resize(size());
+            result.reserve(size());
             for (const auto& v : *this) {
                 try {
                     size_t index = std::stoul(v.first) - 1;
-                    if (index >= result.size()) {
+                    if (result.size() <= index) {
                         result.resize(index + 1);
                     }
                     result[index] = v.second;
                 } catch (...) {
-
+                    throw clg_exception("could not convert map to array: " + v.first + " is not an integer");
                 }
             }
             return result;
@@ -55,11 +55,20 @@ namespace clg {
             }
             return result;
         }
-        /*
-        static int to_lua(lua_State* l, std::nullptr_t v) {
-            lua_pushnil(l);
+
+        static int to_lua(lua_State* l, const clg::table& t) {
+            lua_newtable(l);
+
+            clg::stack_integrity_check check(l);
+
+            for (const auto&[k, v] : t) {
+                clg::push_to_lua(l, k);
+                clg::push_to_lua(l, v);
+                lua_settable(l, -3);
+            }
+
             return 1;
-        }*/
+        }
     };
 
     template<>

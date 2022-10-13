@@ -235,11 +235,22 @@ namespace clg {
 #if LUA_VERSION_NUM == 501
             constexpr auto call = wrapper_function_helper::my_instance_no_this::call;
 #else
-            constexpr auto call = wrapper_function_helper::my_instance::call;
+            constexpr auto call = wrapper_function_helper::my_instance_no_this::call;
 #endif
             mStaticFunctions.push_back({
                std::move(name),
                call
+            });
+            return *this;
+        }
+
+        template<typename Callable>
+        class_registrar<C>& staticFunction(std::string name, Callable&& callback) {
+            auto wrap = mClg.wrap_lambda_to_cfunction(std::forward<Callable>(callback));
+
+            mStaticFunctions.push_back({
+               std::move(name),
+               wrap
             });
             return *this;
         }

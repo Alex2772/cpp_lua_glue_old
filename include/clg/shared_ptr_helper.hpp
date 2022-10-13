@@ -10,7 +10,7 @@
 namespace clg {
     struct shared_ptr_helper {
         std::shared_ptr<void> ptr;
-        const type_info& type;
+        const std::type_info& type;
 
 
         template<typename T>

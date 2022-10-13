@@ -22,6 +22,12 @@ namespace clg {
             other.mPtr = -1;
         }
 
+        template<typename T>
+        static ref from_cpp(lua_State* lua, const T& t) {
+            clg::push_to_lua(lua, t);
+            return from_stack(lua);
+        }
+
         ref& operator=(ref&& other) noexcept {
             mLua = other.mLua;
             mPtr = other.mPtr;
@@ -69,8 +75,13 @@ namespace clg {
             return as<clg::value>();
         }
 
+        bool isNull() const noexcept {
+            return mPtr == -1;
+        }
+
         template<typename T>
         T as() const noexcept {
+            assert(!isNull());
             stack_integrity_check check(mLua);
             push_value_to_stack();
             auto v = clg::get_from_lua<T>(mLua, -1);
@@ -80,6 +91,11 @@ namespace clg {
 
         lua_State* lua() const noexcept {
             return mLua;
+        }
+
+        [[nodiscard]]
+        bool operator==(std::nullptr_t) const noexcept {
+            return mPtr == -1;
         }
 
     private:

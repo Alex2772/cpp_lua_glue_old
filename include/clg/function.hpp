@@ -7,8 +7,10 @@
 #include "lua.hpp"
 #include <utility>
 #include <variant>
+#include <functional>
 #include "converter.hpp"
 #include "ref.hpp"
+#include "dynamic_result.hpp"
 
 namespace clg {
     class function {
@@ -19,10 +21,14 @@ namespace clg {
 
     public:
         function(lua_State* lua, ref ref) : mLua(lua), mRef(std::move(ref)) {
+            if (mRef == nullptr) {
+                return;
+            }
             push_function_to_be_called();
-            assert(lua_isfunction(lua, -1));
+            assert((lua_isfunction(mLua, -1)));
             lua_pop(lua, 1);
         }
+
         function() = default;
         function(function&& rhs) noexcept: mLua(rhs.mLua), mRef(std::move(rhs.mRef)) {}
         function(const function& rhs): mLua(rhs.mLua), mRef(rhs.mRef) {}
@@ -39,6 +45,7 @@ namespace clg {
 
         template<typename... Args>
         void operator()(Args&& ... args) const {
+            if (mRef == nullptr) return;
             push_function_to_be_called();
             push(std::forward<Args>(args)...);
             do_call(sizeof...(args), 0);
@@ -48,9 +55,10 @@ namespace clg {
         Return call(Args&& ... args) {
             stack_integrity_check stack(mLua);
             push_function_to_be_called();
+
             push(std::forward<Args>(args)...);
 
-            if constexpr (std::is_same_v < Return, dynamic_result >) {
+            if constexpr (std::is_same_v < Return, clg::dynamic_result >) {
                 do_call(sizeof...(args), LUA_MULTRET);
                 return get_from_lua<Return>(mLua);
             } else if constexpr (std::is_same_v < Return, void >) {
@@ -77,7 +85,7 @@ namespace clg {
 
         void push_function_to_be_called() const noexcept {
             mRef.push_value_to_stack();
-            assert(lua_isfunction(mLua, -1));
+            assert((lua_isfunction(mLua, -1)));
         }
 
         void do_call(unsigned args, int results) const {
