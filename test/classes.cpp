@@ -330,4 +330,38 @@ BOOST_AUTO_TEST_CASE(staticMethod) {
     int result = v.do_string<int>("return Person.doXor(1, 2)");
     BOOST_CHECK_EQUAL(result, (1 ^ 2));
 }
+
+BOOST_AUTO_TEST_CASE(inheritance) {
+
+    clg::vm v;
+
+    struct IName {
+    public:
+        virtual std::string name() = 0;
+    };
+
+    struct NameHello: IName {
+    public:
+        std::string name() override {
+            return "hello";
+        }
+
+        static std::shared_ptr<NameHello> make() {
+            return std::make_shared<NameHello>();
+        }
+    };
+
+    v.register_class<IName>()
+            .method<&IName::name>("name");
+
+    v.register_class<NameHello>()
+            .staticFunction<NameHello::make>("make");
+
+    v.register_function("getName", [](const std::shared_ptr<IName>& n) {
+        return n->name();
+    });
+
+    auto result = v.do_string<std::string>("return getName(NameHello.make())");
+    BOOST_CHECK_EQUAL(result, "hello");
+}
 BOOST_AUTO_TEST_SUITE_END()
