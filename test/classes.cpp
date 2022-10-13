@@ -331,7 +331,7 @@ BOOST_AUTO_TEST_CASE(staticMethod) {
     BOOST_CHECK_EQUAL(result, (1 ^ 2));
 }
 
-    struct IName {
+    struct IName: clg::allow_lua_inheritance {
     public:
         virtual std::string name() = 0;
     };
