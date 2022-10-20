@@ -489,4 +489,25 @@ _G['obj'] = nil
     BOOST_TEST(memleak_destructor_called);
 }
 
+
+struct SelfAssign: clg::lua_self {
+public:
+    void performAssign() {
+        self()["test"] = "hello";
+    }
+};
+BOOST_AUTO_TEST_CASE(self_assign) {
+    clg::vm v;
+    v.register_class<SelfAssign>()
+            .constructor<>()
+            .method<&SelfAssign::performAssign>("performAssign")
+                    ;
+
+    BOOST_CHECK_EQUAL(v.do_string<std::string>(R"(
+v = SelfAssign:new()
+v:performAssign()
+return v.test
+)"), "hello");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -82,7 +82,7 @@ namespace clg {
             return mPtr == -1;
         }
 
-        operator bool() const noexcept {
+        explicit operator bool() const noexcept {
             return !isNull();
         }
 
@@ -116,6 +116,49 @@ namespace clg {
         int mPtr = -1;
 
         ref(lua_State* state) noexcept: mLua(state), mPtr(luaL_ref(state, LUA_REGISTRYINDEX)) {}
+    };
+
+
+    class table_view: public ref {
+    public:
+        using ref::ref;
+
+        struct value_view {
+        public:
+            value_view(table_view& table, const std::string_view& name) : table(table), name(name) {}
+
+
+            explicit operator ref() const noexcept {
+                const auto L = table.lua();
+                clg::stack_integrity_check c(L);
+                table.push_value_to_stack();
+                lua_getfield(L, -1, name.data());
+                auto result = clg::ref::from_stack(L);
+                lua_pop(L, 1);
+            }
+
+            template<typename T>
+            const T& operator=(const T& t) const noexcept {
+                const auto L = table.lua();
+                clg::stack_integrity_check c(L);
+                table.push_value_to_stack();
+                lua_pushstring(L, name.data());
+                clg::push_to_lua(L, t);
+                lua_settable(L, -3);
+                lua_pop(L, 1);
+                return t;
+            }
+        private:
+            table_view& table;
+            std::string_view name;
+        };
+
+        table_view(ref r): ref(std::move(r)) {}
+
+        value_view operator[](std::string_view v) {
+            assert(!isNull());
+            return { *this, v };
+        }
     };
 
     template<>

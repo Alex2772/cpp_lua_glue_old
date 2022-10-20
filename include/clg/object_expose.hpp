@@ -24,6 +24,12 @@ namespace clg {
      * @endcode
      */
     class lua_self {
+    protected:
+
+        table_view self() const noexcept {
+            return mWeakPtrAndDataHolder;
+        }
+
     private:
         friend clg::ref& lua_self_weak_ptr_and_data_holder(lua_self& s);
         friend clg::weak_ref& lua_self_shared_ptr_holder(lua_self& s);
@@ -134,7 +140,7 @@ namespace clg {
                     dataHolder = clg::ref::from_stack(l);
                 }
 
-                push_strong_ref_holder_object(l, std::move(v), std::move(dataHolder));
+                push_strong_ref_holder_object(l, std::move(v), dataHolder);
                 lua_pushvalue(l, -1);
                 weakRef = clg::weak_ref(clg::ref::from_stack(l));
                 return 1;
