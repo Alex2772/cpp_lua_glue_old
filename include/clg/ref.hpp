@@ -22,6 +22,8 @@ namespace clg {
             other.mPtr = -1;
         }
 
+        ref(std::nullptr_t): ref() {}
+
         template<typename T>
         static ref from_cpp(lua_State* lua, const T& t) {
             clg::push_to_lua(lua, t);
@@ -63,6 +65,7 @@ namespace clg {
         }
 
         static ref from_stack(lua_State* state) noexcept {
+            assert(("from_stack with an empty stack?", lua_gettop(state) > 0));
             return { state };
         }
 
@@ -79,14 +82,24 @@ namespace clg {
             return mPtr == -1;
         }
 
+        operator bool() const noexcept {
+            return !isNull();
+        }
+
         template<typename T>
-        T as() const noexcept {
+        T as() const {
             assert(!isNull());
             stack_integrity_check check(mLua);
             push_value_to_stack();
-            auto v = clg::get_from_lua<T>(mLua, -1);
-            lua_pop(mLua, 1);
-            return v;
+            try {
+                auto v = clg::get_from_lua<T>(mLua, -1);
+                lua_pop(mLua, 1);
+                return v;
+            } catch (...) {
+                lua_pop(mLua, 1);
+                throw;
+            }
+            throw std::runtime_error("should not reach here");
         }
 
         lua_State* lua() const noexcept {
@@ -116,4 +129,5 @@ namespace clg {
             return 1;
         }
     };
+
 }

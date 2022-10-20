@@ -381,4 +381,112 @@ BOOST_AUTO_TEST_CASE(inheritance_lua) {
     auto result = v.do_string<std::string>("return NameHello.make():callNameFromBaseClass()");
     BOOST_CHECK_EQUAL(result, "hello");
 }
+
+struct ClassIsMetatable: clg::lua_self, std::enable_shared_from_this<ClassIsMetatable> {
+public:
+    void callCallback(clg::function c) {
+        c(shared_from_this());
+    }
+};
+
+BOOST_AUTO_TEST_CASE(class_is_metatable) {
+    clg::vm v;
+    v.register_class<ClassIsMetatable>()
+            .constructor<>()
+            .method<&ClassIsMetatable::callCallback>("callCallback")
+            ;
+
+    auto result = v.do_string<bool>(R"(
+c = ClassIsMetatable:new()
+c.test = true
+test = false
+c:callCallback(function(self)
+  test = self.test
+end)
+return test
+)");
+    BOOST_TEST(result);
+}
+
+
+thread_local bool memleak_destructor_called = false;
+
+struct Memleak: clg::lua_self, std::enable_shared_from_this<Memleak> {
+public:
+    ~Memleak() {
+        memleak_destructor_called = true;
+    }
+
+    const std::string& test() {
+        return str;
+    }
+private:
+    std::string str = "hello";
+};
+BOOST_AUTO_TEST_CASE(memleak1) {
+    memleak_destructor_called = false;
+    clg::vm v;
+    v.register_class<Memleak>()
+            .constructor<>()
+            ;
+
+    v.do_string<>(R"(
+c = Memleak:new()
+c = nil
+collectgarbage();
+)");
+    BOOST_TEST(memleak_destructor_called);
+}
+
+BOOST_AUTO_TEST_CASE(memleak2) {
+    memleak_destructor_called = false;
+    clg::vm v;
+    v.register_class<Memleak>()
+            .constructor<>()
+            .method<&Memleak::test>("test")
+            ;
+
+    v.do_string<>(R"(
+function func(obj)
+  return obj:test()
+end
+)");
+    auto obj = std::make_shared<Memleak>();
+    BOOST_CHECK_EQUAL(v.global_function("func").call<std::string>(obj), "hello");
+    v.collectGarbage();
+    BOOST_TEST(!memleak_destructor_called);
+    obj = nullptr;
+    BOOST_TEST(memleak_destructor_called);
+}
+
+BOOST_AUTO_TEST_CASE(memleak3) {
+    memleak_destructor_called = false;
+    clg::vm v;
+    v.register_class<Memleak>()
+            .constructor<>()
+            .method<&Memleak::test>("test")
+            ;
+
+    v.do_string<>(R"(
+function func(obj)
+  _G['obj'] = obj
+  return obj:test()
+end
+)");
+    auto obj = std::make_shared<Memleak>();
+    BOOST_CHECK_EQUAL(v.global_function("func").call<std::string>(obj), "hello");
+    v.collectGarbage();
+    BOOST_TEST(!memleak_destructor_called);
+
+    obj = nullptr;
+    v.collectGarbage();
+    BOOST_TEST(!memleak_destructor_called);
+
+    v.do_string<>(R"(
+_G['obj'] = nil
+)");
+    v.collectGarbage();
+    BOOST_TEST(memleak_destructor_called);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

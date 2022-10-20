@@ -341,6 +341,10 @@ namespace clg {
             return {clg::ref::from_stack(*this), *this};
         }
 
+
+        void collectGarbage() {
+            lua_gc(mState, LUA_GCCOLLECT, 0);
+        }
     };
 
     /**
@@ -361,4 +365,4 @@ namespace clg {
 
 #include "class_registrar.hpp"
 #include "table.hpp"
-#include "ref.hpp"
+#include "object_expose.hpp"

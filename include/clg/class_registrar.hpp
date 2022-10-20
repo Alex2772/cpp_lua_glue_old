@@ -112,7 +112,7 @@ namespace clg {
 
         static int gc(lua_State* l) {
             if (lua_isuserdata(l, 1)) {
-                static_cast<clg::shared_ptr_helper*>(lua_touserdata(l, 1))->~shared_ptr_helper();
+                static_cast<clg::impl::ptr_helper*>(lua_touserdata(l, 1))->~ptr_helper();
             }
             return 0;
         }

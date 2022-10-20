@@ -134,36 +134,6 @@ namespace clg {
         }
     };
 
-    /**
-     * userdata
-     */
-    template<typename T>
-    struct converter<std::shared_ptr<T>> {
-        static std::shared_ptr<T> from_lua(lua_State* l, int n) {
-            if (lua_isuserdata(l, n)) {
-                return reinterpret_cast<shared_ptr_helper*>(lua_touserdata(l, n))->as<T>();
-            }
-            detail::throw_converter_error(l, n, "not a userdata");
-            return nullptr;
-        }
-        static int to_lua(lua_State* l, std::shared_ptr<T> v) {
-            if (v == nullptr) {
-                lua_pushnil(l);
-                return 1;
-            }
-            auto classname = clg::class_name<T>();
-            auto t = reinterpret_cast<shared_ptr_helper*>(lua_newuserdata(l, sizeof(shared_ptr_helper)));
-            new (t) shared_ptr_helper(std::move(v));
-            luaL_getmetatable(l, classname.c_str());
-            if (lua_isnil(l, -1)) {
-                lua_pop(l, 1);
-            } else {
-                lua_setmetatable(l, -2);
-            }
-            return 1;
-        }
-    };
-
     template<typename T>
     static T get_from_lua(lua_State* l) {
         T t = converter<T>::from_lua(l, -1);

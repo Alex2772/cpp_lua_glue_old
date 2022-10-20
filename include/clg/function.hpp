@@ -47,6 +47,10 @@ namespace clg {
         void operator()(Args&& ... args) const {
             if (mRef == nullptr) return;
             push_function_to_be_called();
+            if (!lua_isfunction(mLua, -1)) {
+                lua_pop(mLua, 1);
+                return;
+            }
             push(std::forward<Args>(args)...);
             do_call(sizeof...(args), 0);
         }
@@ -85,7 +89,6 @@ namespace clg {
 
         void push_function_to_be_called() const noexcept {
             mRef.push_value_to_stack();
-            assert((lua_isfunction(mLua, -1)));
         }
 
         void do_call(unsigned args, int results) const {
