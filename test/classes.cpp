@@ -532,4 +532,41 @@ return v.test
 )"), "hello");
 }
 
+
+
+struct SpecificOverload {
+public:
+    void call(int) {
+        called = 1;
+    }
+
+    void call(double) {
+        called = 2;
+    }
+
+    int called = 0;
+};
+
+BOOST_AUTO_TEST_CASE(specific_overload) {
+    clg::vm v;
+    v.register_class<SpecificOverload>()
+            .method<clg::select_overload<int>::of(&SpecificOverload::call)>("call1")
+            .method<clg::select_overload<double>::of(&SpecificOverload::call)>("call2")
+                    ;
+
+    auto obj = std::make_shared<SpecificOverload>();
+    v.set_global_value("obj", obj);
+
+    BOOST_CHECK_EQUAL(obj->called, 0);
+
+    v.do_string<>(R"(
+obj:call1(0)
+)");
+    BOOST_CHECK_EQUAL(obj->called, 1);
+    v.do_string<>(R"(
+obj:call2(0)
+)");
+    BOOST_CHECK_EQUAL(obj->called, 2);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
