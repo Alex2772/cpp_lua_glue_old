@@ -164,12 +164,33 @@ namespace clg {
             using class_t = Class;
             using args = types<Args...>;
             using return_t = R;
+            static constexpr bool is_noexcept = false;
+            static constexpr bool is_const = true;
         };
         template<typename Class, typename R, typename... Args>
         struct callable_class_info<R(Class::*)(Args...)> {
             using class_t = Class;
             using args = types<Args...>;
             using return_t = R;
+            static constexpr bool is_noexcept = false;
+            static constexpr bool is_const = false;
+        };
+
+        template<typename Class, typename R, typename... Args>
+        struct callable_class_info<R(Class::*)(Args...) const noexcept> {
+            using class_t = Class;
+            using args = types<Args...>;
+            using return_t = R;
+            static constexpr bool is_noexcept = true;
+            static constexpr bool is_const = true;
+        };
+        template<typename Class, typename R, typename... Args>
+        struct callable_class_info<R(Class::*)(Args...) noexcept> {
+            using class_t = Class;
+            using args = types<Args...>;
+            using return_t = R;
+            static constexpr bool is_noexcept = true;
+            static constexpr bool is_const = false;
         };
 
         template<typename R, typename... Args>
@@ -360,6 +381,30 @@ namespace clg {
             lua_close(*this);
         }
 
+    };
+
+
+    /**
+     * @brief Chooses specific overload of a method.
+     * @ingroup useful_traits
+     * @details
+     * Example:
+     * @code{cpp}
+     * struct GameObject {
+     * public:
+     *   void setPos(glm::vec3);
+     *   void setPos(glm::vec2);
+     * };
+     * ...
+     * auto setPosVec2 = clg::select_overload<glm::vec2>::of(&GameObject::setPos);
+     * @endcode
+     */
+    template<typename... Args>
+    struct select_overload {
+        template<typename Return, typename Class>
+        static constexpr auto of(Return(Class::*ptr)(Args... args)) -> decltype(ptr) {
+            return ptr;
+        }
     };
 }
 
