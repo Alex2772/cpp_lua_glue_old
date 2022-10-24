@@ -385,7 +385,7 @@ BOOST_AUTO_TEST_CASE(inheritance_lua) {
 struct ClassIsMetatable: clg::lua_self, std::enable_shared_from_this<ClassIsMetatable> {
 public:
     void callCallback(clg::function c) {
-        c(shared_from_this());
+        BOOST_TEST(c.call<bool>(shared_from_this()));
     }
 };
 
@@ -402,6 +402,28 @@ c.test = true
 test = false
 c:callCallback(function(self)
   test = self.test
+  return true
+end)
+return test
+)");
+    BOOST_TEST(result);
+}
+
+
+BOOST_AUTO_TEST_CASE(class_compare) {
+    clg::vm v;
+    v.register_class<ClassIsMetatable>()
+            .constructor<>()
+            .method<&ClassIsMetatable::callCallback>("callCallback")
+            ;
+
+    auto result = v.do_string<bool>(R"(
+c = ClassIsMetatable:new()
+c.test = true
+test = false
+c:callCallback(function(self)
+  test = self.test
+  return c == self
 end)
 return test
 )");

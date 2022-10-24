@@ -75,19 +75,11 @@ namespace clg {
     template<>
     struct converter<table_array> {
         static clg::table_array from_lua(lua_State* l, int n) {
-            if (!lua_istable(l, n)) {
-                clg::detail::throw_converter_error(l, n, "not a table");
-            }
-
             clg::table_array result;
-            if (n < 0) {
-                n = lua_gettop(l) + n + 1;
-            }
-
-            lua_pushnil(l);
-            while (lua_next(l, n) != 0)
-            {
-                result.push_back(ref::from_stack(l));
+            auto t = converter<table>::from_lua(l, n);
+            result.reserve(t.size());
+            for (auto&[_, value] : t) {
+                result.push_back(std::move(value));
             }
             return result;
         }

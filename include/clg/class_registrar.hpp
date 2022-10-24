@@ -46,6 +46,7 @@ namespace clg {
 
         lua_cfunctions mMethods;
         lua_cfunctions mStaticFunctions;
+        lua_cfunctions mMetaFunctions;
         std::vector<lua_CFunction> mConstructors;
 
         template<auto methodPtr>
@@ -186,14 +187,19 @@ namespace clg {
             // metatable = { __gc = ... }
             luaL_newmetatable(mClg, classname.c_str());
             int metatableId = lua_gettop(mClg);
-            luaL_Reg metatableFunctions[] = {
+            std::vector<luaL_Reg> metatableFunctions = {
                     { "__gc", gc },
                     { "__eq", eq },
                     { "__concat", concat },
                     { "__tostring", tostring },
-                    { nullptr },
             };
-            luaL_setfuncs(mClg, metatableFunctions, 0);
+            metatableFunctions.reserve(metatableFunctions.size() + mMetaFunctions.size() + 1);
+            for (const auto& v : mMetaFunctions) {
+                metatableFunctions.push_back({v.name.c_str(), v.cFunction});
+            }
+
+            metatableFunctions.push_back({ nullptr });
+            luaL_setfuncs(mClg, metatableFunctions.data(), 0);
 
             // metatable.__index = methods
             impl::newlib(mClg, mMethods);
@@ -277,5 +283,33 @@ namespace clg {
             });
             return *this;
         }
+
+        template<typename Callable>
+        class_registrar<C>& meta(std::string name, Callable&& callback) {
+            auto wrap = mClg.wrap_lambda_to_cfunction(std::forward<Callable>(callback));
+
+            mMetaFunctions.push_back({
+                                               std::move(name),
+                                               wrap
+                                       });
+            return *this;
+        }
+
+        template<auto m>
+        class_registrar<C>& meta(std::string name) {
+            using wrapper_function_helper = typename static_function_helper<m>::wrapper_function_helper;
+
+#if LUA_VERSION_NUM == 501
+            constexpr auto call = wrapper_function_helper::my_instance_no_this::call;
+#else
+            constexpr auto call = wrapper_function_helper::my_instance_no_this::call;
+#endif
+            mMetaFunctions.push_back({
+                 std::move(name),
+                 call
+            });
+            return *this;
+        }
+
     };
 }

@@ -168,6 +168,10 @@ namespace clg {
             return clg::ref::from_stack(l);
         }
         static int to_lua(lua_State* l, const clg::ref& ref) {
+            if (ref.isNull()) {
+                lua_pushnil(l);
+                return 1;
+            }
             ref.push_value_to_stack();
             return 1;
         }
